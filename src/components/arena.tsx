@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChogPortrait } from "@/components/chog-portrait";
@@ -13,6 +13,8 @@ import {
 } from "@/lib/chogs";
 import { simulateBattle, type BattleResult } from "@/lib/battle";
 import { useLocalGame } from "@/hooks/use-local-game";
+import { useWallet } from "@/hooks/use-wallet";
+import { CHOG_REMATCH_COST } from "@/lib/monad";
 import { cn } from "@/lib/utils";
 
 type Phase = "ready" | "fighting" | "result";
@@ -55,6 +57,11 @@ function FighterPanel({
           : "border-white/10",
       )}
     >
+      {chog.source === "onchain" && (
+        <span className="absolute right-2 top-2 rounded-full bg-[#b8f000] px-2 py-0.5 text-[10px] font-bold uppercase text-[#0b1f14]">
+          Owned
+        </span>
+      )}
       <ChogPortrait chog={chog} bouncing={selected} />
       <div className="w-full space-y-2">
         <div className="flex items-center justify-between gap-2">
@@ -81,12 +88,36 @@ export function Arena() {
     board,
     todayRecord,
     day,
+    rematch,
     chooseFighter,
     recordDuel,
     clearSeason,
+    grantRematch,
+    startRematchFight,
   } = useLocalGame();
+  const { address, connected } = useWallet();
 
-  const player = getChogById(selectedId) ?? DEMO_CHOGS[0];
+  const [owned, setOwned] = useState<ChogFighter[]>([]);
+  const [ownedCount, setOwnedCount] = useState(0);
+  const [ownedStatus, setOwnedStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [ownedError, setOwnedError] = useState<string | null>(null);
+  const [chogBalance, setChogBalance] = useState<string | null>(null);
+  const [canRematchToken, setCanRematchToken] = useState(false);
+  const [balanceStatus, setBalanceStatus] = useState<"idle" | "loading" | "error">("idle");
+
+  const roster = useMemo(() => {
+    const map = new Map<string, ChogFighter>();
+    for (const c of DEMO_CHOGS) map.set(c.id, c);
+    for (const c of owned) map.set(c.id, c);
+    return map;
+  }, [owned]);
+
+  const player =
+    roster.get(selectedId) ??
+    owned[0] ??
+    getChogById(selectedId) ??
+    DEMO_CHOGS[0];
+
   const rival = useMemo(() => pickRival(player.id, day), [player.id, day]);
 
   const [liveResult, setLiveResult] = useState<BattleResult | null>(null);
@@ -97,6 +128,75 @@ export function Arena() {
   const [hitSide, setHitSide] = useState<"player" | "rival" | null>(null);
   const [animatingFor, setAnimatingFor] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!connected || !address) {
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setOwned([]);
+        setOwnedCount(0);
+        setOwnedStatus("idle");
+        setOwnedError(null);
+        setChogBalance(null);
+        setCanRematchToken(false);
+        setBalanceStatus("idle");
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setOwnedStatus("loading");
+      setBalanceStatus("loading");
+      setOwnedError(null);
+    });
+
+    fetch(`/api/owned-chogs?address=${address}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load NFTs");
+        if (cancelled) return;
+        const fighters = data.fighters as ChogFighter[];
+        setOwned(fighters);
+        setOwnedCount(data.count as number);
+        setOwnedStatus("idle");
+        if (fighters.length > 0) {
+          chooseFighter(fighters[0].id);
+        }
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        setOwnedStatus("error");
+        setOwnedError(err.message);
+      });
+
+    fetch(`/api/chog-balance?address=${address}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Balance failed");
+        if (cancelled) return;
+        setChogBalance(
+          Number(data.formatted).toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          }),
+        );
+        setCanRematchToken(Boolean(data.canRematch));
+        setBalanceStatus("idle");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBalanceStatus("error");
+        setCanRematchToken(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, address, chooseFighter]);
 
   const result = todayRecord?.result ?? liveResult;
   const showingFight =
@@ -115,6 +215,15 @@ export function Arena() {
     showingFight && phase === "fighting"
       ? visibleLog
       : result?.log.length ?? 0;
+
+  function resetFightUi() {
+    setAnimatingFor(null);
+    setLiveResult(null);
+    setPhase("ready");
+    setPlayerHp(100);
+    setRivalHp(100);
+    setVisibleLog(0);
+  }
 
   function startFight() {
     if (todayRecord || phase === "fighting") return;
@@ -143,32 +252,65 @@ export function Arena() {
         window.setTimeout(() => setHitSide(null), 280);
 
         if (index === battle.log.length - 1) {
-          recordDuel(player.id, rival.id, battle);
+          recordDuel(player.id, rival.id, battle, {
+            [player.id]: {
+              tokenId: player.tokenId,
+              name: player.name,
+              accent: player.accent,
+            },
+            [rival.id]: {
+              tokenId: rival.tokenId,
+              name: rival.name,
+              accent: rival.accent,
+            },
+          });
           setPhase("result");
         }
       }, 700 * (index + 1));
     });
   }
 
+  function onUnlockRematch() {
+    if (!address || !canRematchToken || !todayRecord) return;
+    grantRematch(player.id, address);
+  }
+
+  function onUseRematch() {
+    if (!rematch || rematch.used) return;
+    startRematchFight(player.id);
+    resetFightUi();
+  }
+
   function onResetSeason() {
     startTransition(() => {
       clearSeason();
-      setLiveResult(null);
-      setAnimatingFor(null);
-      setPhase("ready");
-      setPlayerHp(100);
-      setRivalHp(100);
-      setVisibleLog(0);
+      resetFightUi();
     });
   }
 
   const won = result?.winnerId === player.id;
-  const ranked = board
-    .map((entry) => ({
-      ...entry,
-      chog: getChogById(entry.chogId),
-    }))
-    .filter((e) => e.chog);
+  const ranked = board.map((entry) => {
+    const fromRoster = roster.get(entry.chogId) ?? getChogById(entry.chogId);
+    const fallback: ChogFighter | undefined = entry.name
+      ? {
+          id: entry.chogId,
+          tokenId: entry.tokenId ?? 0,
+          name: entry.name,
+          archetype: "chaos",
+          traits: {
+            eyes: "?",
+            mouth: "?",
+            fur: "?",
+            vibe: "?",
+            accessory: "?",
+          },
+          stats: { power: 50, speed: 50, chaos: 50, grit: 50 },
+          accent: entry.accent ?? "#b8f000",
+          glow: "rgba(184,240,0,0.35)",
+        }
+      : undefined;
+    return { ...entry, chog: fromRoster ?? fallback };
+  }).filter((e) => e.chog);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-20 sm:px-6">
@@ -179,34 +321,64 @@ export function Arena() {
               Your fighter
             </p>
             <h2 className="font-heading text-2xl font-bold tracking-tight text-[#f4ffe8] sm:text-3xl">
-              Pick the Chog NFT you battle as
+              {connected ? "Battle with your Chog Genesis" : "Pick the Chog NFT you battle as"}
             </h2>
             <p className="mt-1 max-w-xl text-sm text-[#c5d6c8]">
-              Demo roster for now — each token’s traits become live combat DNA.
-              Swap Chogs and the fight changes.
+              {connected
+                ? ownedStatus === "loading"
+                  ? "Reading your Monad wallet…"
+                  : ownedCount > 0
+                    ? `Found ${ownedCount} Chog Genesis · traits become combat DNA.`
+                    : "No Chog Genesis in this wallet — practice roster still works."
+                : "Connect a Monad wallet to load real Chog Genesis NFTs, or practice with the demo roster."}
             </p>
+            {ownedError && (
+              <p className="mt-1 text-sm text-[#ff6b4a]">{ownedError}</p>
+            )}
           </div>
           <Badge className="bg-[#ff6b4a] text-[#1a0a06] hover:bg-[#ff6b4a]">
             Daily duel · {day}
           </Badge>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {DEMO_CHOGS.map((chog) => (
-            <FighterPanel
-              key={chog.id}
-              chog={chog}
-              selected={chog.id === player.id}
-              onSelect={() => {
-                chooseFighter(chog.id);
-                setAnimatingFor(null);
-                setLiveResult(null);
-                setPhase("ready");
-                setPlayerHp(100);
-                setRivalHp(100);
-                setVisibleLog(0);
-              }}
-            />
-          ))}
+
+        {owned.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b8f000]/80">
+              Wallet owned
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {owned.map((chog) => (
+                <FighterPanel
+                  key={chog.id}
+                  chog={chog}
+                  selected={chog.id === player.id}
+                  onSelect={() => {
+                    chooseFighter(chog.id);
+                    resetFightUi();
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8aa392]">
+            Practice roster
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {DEMO_CHOGS.map((chog) => (
+              <FighterPanel
+                key={chog.id}
+                chog={chog}
+                selected={chog.id === player.id}
+                onSelect={() => {
+                  chooseFighter(chog.id);
+                  resetFightUi();
+                }}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
@@ -268,7 +440,7 @@ export function Arena() {
               </p>
             )}
             {effectivePhase === "result" && result && (
-              <div className="max-w-[220px] text-center">
+              <div className="max-w-[240px] space-y-3 text-center">
                 <p
                   className={cn(
                     "font-heading text-2xl font-black",
@@ -277,10 +449,31 @@ export function Arena() {
                 >
                   {won ? "You win!" : "Rival wins"}
                 </p>
-                <p className="mt-1 text-xs text-[#c5d6c8]">
-                  One duel per Chog per day. Come back tomorrow — or switch
-                  fighters.
+                <p className="text-xs text-[#c5d6c8]">
+                  One free duel per Chog per day. Hold $CHOG to unlock a rematch.
                 </p>
+                {rematch && !rematch.used ? (
+                  <Button
+                    size="lg"
+                    onClick={onUseRematch}
+                    className="h-11 rounded-xl bg-[#ff6b4a] px-6 font-bold text-[#1a0a06] hover:bg-[#ff8566]"
+                  >
+                    Use $CHOG rematch
+                  </Button>
+                ) : !rematch && todayRecord ? (
+                  <Button
+                    size="lg"
+                    disabled={!connected || !canRematchToken || balanceStatus === "loading"}
+                    onClick={onUnlockRematch}
+                    className="h-11 rounded-xl bg-[#b8f000]/90 px-6 font-bold text-[#0b1f14] hover:bg-[#d4ff4d] disabled:opacity-40"
+                  >
+                    {!connected
+                      ? "Connect for $CHOG rematch"
+                      : canRematchToken
+                        ? `Unlock rematch (${CHOG_REMATCH_COST.toString()} $CHOG)`
+                        : "Need 1,000 $CHOG"}
+                  </Button>
+                ) : null}
               </div>
             )}
           </div>
@@ -337,21 +530,23 @@ export function Arena() {
           )}
         </div>
 
-        <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
-          <p className="text-xs uppercase tracking-[0.16em] text-[#8aa392]">
-            $CHOG later
-          </p>
-          {["Wager stake", "Rematch boost", "Season cosmetics"].map((label) => (
-            <button
-              key={label}
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded-lg border border-dashed border-white/15 px-3 py-1.5 text-xs text-[#8aa392]"
-              title="Optional $CHOG integration after v1"
-            >
-              {label} · soon
-            </button>
-          ))}
+        <div className="relative z-10 mt-4 flex flex-wrap items-center gap-3">
+          <p className="text-xs uppercase tracking-[0.16em] text-[#8aa392]">$CHOG</p>
+          <span className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-[#c5d6c8]">
+            {connected
+              ? balanceStatus === "loading"
+                ? "Reading balance…"
+                : chogBalance != null
+                  ? `Balance ${chogBalance}`
+                  : "Balance unavailable"
+              : "Connect wallet to read balance"}
+          </span>
+          <span className="rounded-lg border border-dashed border-[#b8f000]/30 px-3 py-1.5 text-xs text-[#b8f000]/90">
+            Rematch unlock · {CHOG_REMATCH_COST.toString()} held
+          </span>
+          <span className="rounded-lg border border-dashed border-white/15 px-3 py-1.5 text-xs text-[#8aa392]">
+            Wagers · soon
+          </span>
         </div>
       </section>
 

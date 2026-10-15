@@ -1,4 +1,5 @@
 import { Arena } from "@/components/arena";
+import { WalletBar } from "@/components/wallet-bar";
 
 export default function Home() {
   return (
@@ -28,16 +29,19 @@ export default function Home() {
         />
       </div>
 
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
         <p className="font-heading text-lg font-extrabold tracking-tight text-[#b8f000]">
           Chog Rivalry
         </p>
-        <a
-          href="#arena"
-          className="text-sm font-medium text-[#c5d6c8] transition hover:text-[#b8f000]"
-        >
-          Enter arena
-        </a>
+        <div className="flex items-center gap-4">
+          <a
+            href="#arena"
+            className="hidden text-sm font-medium text-[#c5d6c8] transition hover:text-[#b8f000] sm:inline"
+          >
+            Enter arena
+          </a>
+          <WalletBar />
+        </div>
       </header>
 
       {/* Hero — brand + one headline + support + CTA + dominant visual plane */}

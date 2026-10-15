@@ -24,6 +24,9 @@ export type ChogFighter = {
   stats: ChogStats;
   accent: string;
   glow: string;
+  image?: string;
+  source?: "demo" | "onchain";
+  rawAttributes?: Record<string, string>;
 };
 
 const ARCHETYPE_BASE: Record<Archetype, ChogStats> = {
@@ -166,6 +169,7 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
 export const DEMO_CHOGS: ChogFighter[] = DEMO_CHOGS_RAW.map((chog) => ({
   ...chog,
   stats: statsFromTraits(chog.archetype, chog.traits, chog.tokenId),
+  source: "demo" as const,
 }));
 
 export function getChogById(id: string) {
