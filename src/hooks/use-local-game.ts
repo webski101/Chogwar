@@ -49,6 +49,7 @@ function getSnapshot() {
     board: loadBoard(),
     duels: loadDuels(),
     rematchTick: localStorage.getItem("chog-rivalry:rematch") ?? "",
+    day: todayKey(),
   });
 }
 
@@ -58,6 +59,8 @@ function getServerSnapshot() {
     board: [] as BoardEntry[],
     duels: [] as DuelRecord[],
     rematchTick: "",
+    // Stable during prerender — real day is read only on the client.
+    day: "1970-01-01",
   });
 }
 
@@ -68,10 +71,11 @@ export function useLocalGame() {
       selectedId: string;
       board: BoardEntry[];
       duels: DuelRecord[];
+      day: string;
     };
   }, [snap]);
 
-  const day = todayKey();
+  const day = data.day;
   const todayRecord = useMemo(
     () =>
       data.duels.find(
