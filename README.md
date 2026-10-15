@@ -17,6 +17,12 @@ Your Chog isn’t a login badge — it’s the fighter. Its traits set the stats
 - Practice roster when you don’t hold Genesis
 - Local season board + **`$CHOG` rematch** (hold ≥ 1,000)
 
+## Deploy
+
+Live on Vercel: [temporary-agile-opal-34j1u87.vercel.app](https://temporary-agile-opal-34j1u87.vercel.app)
+
+Claim into your Vercel account (keeps the deployment): [Claim deployment](https://vercel.com/claim-deployment?code=270aec7d-6422-4a0b-a786-037128b86947)
+
 ## Run locally
 
 ```bash
