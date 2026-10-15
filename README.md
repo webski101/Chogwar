@@ -19,9 +19,8 @@ Your Chog isn’t a login badge — it’s the fighter. Its traits set the stats
 
 ## Deploy
 
-Live on Vercel: [temporary-agile-opal-34j1u87.vercel.app](https://temporary-agile-opal-34j1u87.vercel.app)
-
-Claim into your Vercel account (keeps the deployment): [Claim deployment](https://vercel.com/claim-deployment?code=270aec7d-6422-4a0b-a786-037128b86947)
+Latest preview (with fighter art): [temporary-fleet-magenta-n7pc8bs.vercel.app](https://temporary-fleet-magenta-n7pc8bs.vercel.app)  
+[Claim this deploy](https://vercel.com/claim-deployment?code=ea9a21b0-f5f0-4fff-ab35-48a00d81ac73) to keep it.
 
 ## Run locally
 
