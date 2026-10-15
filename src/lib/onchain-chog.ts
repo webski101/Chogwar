@@ -1,5 +1,5 @@
 import type { Archetype, ChogFighter, ChogTraits } from "@/lib/chogs";
-import { statsFromTraits } from "@/lib/chogs";
+import { chogArtUrl, statsFromTraits } from "@/lib/chogs";
 import { ipfsToHttp } from "@/lib/monad";
 
 export type NftAttribute = {
@@ -74,7 +74,9 @@ export function fighterFromMetadata(
     stats: statsFromTraits(archetype, traits, tokenId),
     accent,
     glow: "transparent",
-    image: metadata.image ? ipfsToHttp(metadata.image) : undefined,
+    image: metadata.image
+      ? ipfsToHttp(metadata.image)
+      : chogArtUrl(tokenId),
     source: "onchain",
     rawAttributes: Object.fromEntries(map),
   };

@@ -82,7 +82,13 @@ function FighterPick({
       >
         {chog.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={chog.image} alt="" className="h-full w-full object-cover" />
+          <img
+            src={chog.image}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div
             className="flex h-full w-full items-end p-3"

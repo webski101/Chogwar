@@ -1,8 +1,8 @@
 import { Arena } from "@/components/arena";
 import { WalletBar } from "@/components/wallet-bar";
+import { chogArtUrl } from "@/lib/chogs";
 
-const HERO_CHOG =
-  "https://gateway.pinata.cloud/ipfs/bafybeihau2egcccbdxymeckmmbrqytbfor5gkt3en6d5fsbueymdbq7g6e/883.webp";
+const HERO_CHOG = chogArtUrl(883);
 
 export default function Home() {
   return (

@@ -29,6 +29,14 @@ export type ChogFighter = {
   rawAttributes?: Record<string, string>;
 };
 
+/** Genesis art CDN (Pinata). On-chain metadata image paths use this CID. */
+export const CHOG_IMAGE_CID =
+  "bafybeihau2egcccbdxymeckmmbrqytbfor5gkt3en6d5fsbueymdbq7g6e";
+
+export function chogArtUrl(assetId: number | string) {
+  return `https://gateway.pinata.cloud/ipfs/${CHOG_IMAGE_CID}/${assetId}.webp`;
+}
+
 const ARCHETYPE_BASE: Record<Archetype, ChogStats> = {
   chaos: { power: 68, speed: 72, chaos: 96, grit: 54 },
   tank: { power: 74, speed: 42, chaos: 48, grit: 98 },
@@ -88,6 +96,8 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
     },
     accent: "#e85d04",
     glow: "transparent",
+    // Art asset ids from on-chain metadata (tokenId ≠ image index).
+    image: chogArtUrl(1461),
   },
   {
     id: "chog-042",
@@ -103,6 +113,7 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
     },
     accent: "#6b7c5e",
     glow: "transparent",
+    image: chogArtUrl(1503),
   },
   {
     id: "chog-777",
@@ -118,6 +129,7 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
     },
     accent: "#d4a373",
     glow: "transparent",
+    image: chogArtUrl(269),
   },
   {
     id: "chog-301",
@@ -133,6 +145,7 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
     },
     accent: "#c45c4a",
     glow: "transparent",
+    image: chogArtUrl(1762),
   },
   {
     id: "chog-888",
@@ -148,6 +161,7 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
     },
     accent: "#e85d04",
     glow: "transparent",
+    image: chogArtUrl(380),
   },
   {
     id: "chog-113",
@@ -163,6 +177,7 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
     },
     accent: "#6b7c5e",
     glow: "transparent",
+    image: chogArtUrl(1574),
   },
 ];
 

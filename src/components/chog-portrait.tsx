@@ -41,6 +41,8 @@ export function ChogPortrait({
         <img
           src={chog.image}
           alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
           className="h-full w-full rounded-xl object-cover shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
         />
       ) : (
