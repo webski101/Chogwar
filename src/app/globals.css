@@ -49,38 +49,38 @@
 }
 
 :root {
-  --background: #07150e;
-  --foreground: #f4ffe8;
-  --card: #0f2418;
-  --card-foreground: #f4ffe8;
-  --popover: #0f2418;
-  --popover-foreground: #f4ffe8;
-  --primary: #b8f000;
-  --primary-foreground: #0b1f14;
-  --secondary: #12261a;
-  --secondary-foreground: #f4ffe8;
-  --muted: #12261a;
-  --muted-foreground: #8aa392;
-  --accent: #ff6b4a;
-  --accent-foreground: #1a0a06;
-  --destructive: #f87171;
-  --border: rgb(255 255 255 / 12%);
-  --input: rgb(255 255 255 / 14%);
-  --ring: #b8f000;
-  --chart-1: #b8f000;
-  --chart-2: #ff6b4a;
-  --chart-3: #5eead4;
-  --chart-4: #fdba74;
-  --chart-5: #a3e635;
-  --radius: 0.75rem;
-  --sidebar: #0f2418;
-  --sidebar-foreground: #f4ffe8;
-  --sidebar-primary: #b8f000;
-  --sidebar-primary-foreground: #0b1f14;
-  --sidebar-accent: #12261a;
-  --sidebar-accent-foreground: #f4ffe8;
-  --sidebar-border: rgb(255 255 255 / 10%);
-  --sidebar-ring: #b8f000;
+  --background: #171412;
+  --foreground: #f3ebe2;
+  --card: #211e1b;
+  --card-foreground: #f3ebe2;
+  --popover: #211e1b;
+  --popover-foreground: #f3ebe2;
+  --primary: #e85d04;
+  --primary-foreground: #1a0c04;
+  --secondary: #2a2622;
+  --secondary-foreground: #f3ebe2;
+  --muted: #2a2622;
+  --muted-foreground: #a89f94;
+  --accent: #6b7c5e;
+  --accent-foreground: #f3ebe2;
+  --destructive: #c45c4a;
+  --border: rgb(243 235 226 / 12%);
+  --input: rgb(243 235 226 / 14%);
+  --ring: #e85d04;
+  --chart-1: #e85d04;
+  --chart-2: #6b7c5e;
+  --chart-3: #d4a373;
+  --chart-4: #c45c4a;
+  --chart-5: #f3ebe2;
+  --radius: 0.5rem;
+  --sidebar: #211e1b;
+  --sidebar-foreground: #f3ebe2;
+  --sidebar-primary: #e85d04;
+  --sidebar-primary-foreground: #1a0c04;
+  --sidebar-accent: #2a2622;
+  --sidebar-accent-foreground: #f3ebe2;
+  --sidebar-border: rgb(243 235 226 / 10%);
+  --sidebar-ring: #e85d04;
 }
 
 @layer base {
@@ -101,48 +101,38 @@
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-6px);
   }
 }
 
 @keyframes chog-hit {
   0%,
   100% {
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
   }
-  25% {
-    transform: translateX(-6px) rotate(-2deg);
+  30% {
+    transform: translateX(-10px) scale(0.98);
   }
-  75% {
-    transform: translateX(6px) rotate(2deg);
+  60% {
+    transform: translateX(8px) scale(1.02);
   }
 }
 
 @keyframes log-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes hero-drift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(2%, -1.5%, 0) scale(1.03);
   }
 }
 
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -150,30 +140,44 @@
   }
 }
 
+@keyframes stage-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .animate-chog-bounce {
-  animation: chog-bounce 1.1s ease-in-out infinite;
+  animation: chog-bounce 1.2s ease-in-out infinite;
 }
 
 .animate-chog-hit {
-  animation: chog-hit 0.28s ease-in-out;
+  animation: chog-hit 0.32s ease-in-out;
 }
 
 .animate-log-in {
-  animation: log-in 0.35s ease-out both;
-}
-
-.animate-hero-drift {
-  animation: hero-drift 14s ease-in-out infinite;
+  animation: log-in 0.3s ease-out both;
 }
 
 .animate-fade-up {
-  animation: fade-up 0.7s ease-out both;
+  animation: fade-up 0.65s ease-out both;
 }
 
 .animate-fade-up-delay {
-  animation: fade-up 0.7s ease-out 0.15s both;
+  animation: fade-up 0.65s ease-out 0.12s both;
 }
 
 .animate-fade-up-delay-2 {
-  animation: fade-up 0.7s ease-out 0.3s both;
+  animation: fade-up 0.65s ease-out 0.24s both;
+}
+
+.animate-stage-pulse {
+  animation: stage-pulse 5s ease-in-out infinite;
+}
+
+.grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
 }

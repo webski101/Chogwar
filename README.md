@@ -11,11 +11,11 @@ Your Chog isn’t a login badge — it’s the fighter. Its traits set the stats
 ## Features
 
 - Connect an injected wallet on **Monad** (chain id `143`)
-- Load real **Chog Genesis** NFTs (`tokensOfOwner` + IPFS traits → combat stats)
-- Demo practice roster when you don’t hold Genesis
-- Deterministic daily rival matchups + animated duel log
-- Local season leaderboard
-- **`$CHOG` rematch unlock**: hold ≥ 1,000 $CHOG to unlock one rematch after today’s duel
+- Load real **Chog Genesis** NFTs (`tokensOfOwner` + IPFS traits → combat stats / HP)
+- **Turn-based fights**: pick Strike / Disrupt / Guard each round (RPS + trait edges)
+- Rival AI reads HP and archetype
+- Practice roster when you don’t hold Genesis
+- Local season board + **`$CHOG` rematch** (hold ≥ 1,000)
 
 ## Run locally
 

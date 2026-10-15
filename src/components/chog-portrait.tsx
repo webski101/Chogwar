@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   chog: ChogFighter;
   className?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   bouncing?: boolean;
   hit?: boolean;
 };
@@ -17,7 +17,13 @@ export function ChogPortrait({
   hit,
 }: Props) {
   const dim =
-    size === "sm" ? "h-16 w-16" : size === "lg" ? "h-44 w-44" : "h-28 w-28";
+    size === "sm"
+      ? "h-14 w-14"
+      : size === "lg"
+        ? "h-40 w-40 sm:h-52 sm:w-52"
+        : size === "xl"
+          ? "h-52 w-52 sm:h-64 sm:w-64"
+          : "h-24 w-24";
 
   return (
     <div
@@ -28,7 +34,6 @@ export function ChogPortrait({
         hit && "animate-chog-hit",
         className,
       )}
-      style={{ filter: `drop-shadow(0 0 18px ${chog.glow})` }}
       aria-hidden
     >
       {chog.image ? (
@@ -36,58 +41,20 @@ export function ChogPortrait({
         <img
           src={chog.image}
           alt=""
-          className="h-full w-full rounded-full object-cover ring-2 ring-[#b8f000]/35"
+          className="h-full w-full rounded-xl object-cover shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
         />
       ) : (
-        <svg viewBox="0 0 120 120" className="h-full w-full">
-          <defs>
-            <radialGradient id={`bg-${chog.id}`} cx="50%" cy="40%" r="60%">
-              <stop offset="0%" stopColor={chog.accent} stopOpacity="0.95" />
-              <stop offset="100%" stopColor="#0b1f14" stopOpacity="0.9" />
-            </radialGradient>
-          </defs>
-          <circle cx="60" cy="60" r="52" fill={`url(#bg-${chog.id})`} />
-          <ellipse cx="60" cy="68" rx="34" ry="30" fill="#12261a" />
-          <ellipse
-            cx="34"
-            cy="34"
-            rx="12"
-            ry="16"
-            fill={chog.accent}
-            transform="rotate(-18 34 34)"
-          />
-          <ellipse
-            cx="86"
-            cy="34"
-            rx="12"
-            ry="16"
-            fill={chog.accent}
-            transform="rotate(18 86 34)"
-          />
-          <ellipse cx="60" cy="62" rx="28" ry="24" fill="#1a3324" />
-          <circle cx="48" cy="58" r="6" fill="#f7fee7" />
-          <circle cx="72" cy="58" r="6" fill="#f7fee7" />
-          <circle cx="49" cy="59" r="2.5" fill="#052e16" />
-          <circle cx="73" cy="59" r="2.5" fill="#052e16" />
-          <path
-            d={
-              chog.archetype === "tank"
-                ? "M48 74 H72"
-                : chog.archetype === "brute"
-                  ? "M46 72 Q60 86 74 72"
-                  : "M48 72 Q60 82 72 72"
-            }
-            stroke="#f7fee7"
-            strokeWidth="3"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <circle cx="60" cy="42" r="4" fill={chog.accent} opacity="0.9" />
-        </svg>
+        <div
+          className="flex h-full w-full items-end justify-center rounded-xl"
+          style={{
+            background: `linear-gradient(160deg, ${chog.accent} 0%, #211e1b 70%)`,
+          }}
+        >
+          <span className="pb-4 font-heading text-3xl font-bold text-[#f3ebe2]/90">
+            #{chog.tokenId}
+          </span>
+        </div>
       )}
-      <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-[#0b1f14]/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#b8f000] ring-1 ring-[#b8f000]/40">
-        #{chog.tokenId}
-      </span>
     </div>
   );
 }

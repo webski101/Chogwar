@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, DM_Sans, Geist_Mono } from "next/font/google";
+import { Fraunces, Outfit, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const heading = Bricolage_Grotesque({
+const heading = Fraunces({
   variable: "--font-heading",
   subsets: ["latin"],
 });
 
-const sans = DM_Sans({
+const sans = Outfit({
   variable: "--font-sans",
   subsets: ["latin"],
 });
@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Chog Rivalry — Your NFT is the fighter",
   description:
-    "Pokémon battles, but your Chog NFT is the Pokémon. Trait-powered daily duels for Chogathon 2026.",
+    "Turn-based duels where your Chog Genesis traits decide the fight. Built for Chogathon 2026.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

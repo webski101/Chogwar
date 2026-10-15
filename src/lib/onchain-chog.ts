@@ -51,7 +51,7 @@ function toLegacyTraits(map: Map<string, string>): ChogTraits {
   };
 }
 
-const ACCENTS = ["#b8f000", "#5eead4", "#fb7185", "#fdba74", "#f87171", "#a3e635"];
+const ACCENTS = ["#e85d04", "#6b7c5e", "#d4a373", "#c45c4a", "#f3ebe2", "#8a7355"];
 
 function accentFor(tokenId: number) {
   return ACCENTS[tokenId % ACCENTS.length];
@@ -73,7 +73,7 @@ export function fighterFromMetadata(
     traits,
     stats: statsFromTraits(archetype, traits, tokenId),
     accent,
-    glow: `${accent}73`,
+    glow: "transparent",
     image: metadata.image ? ipfsToHttp(metadata.image) : undefined,
     source: "onchain",
     rawAttributes: Object.fromEntries(map),

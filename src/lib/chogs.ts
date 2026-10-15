@@ -86,8 +86,8 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
       vibe: "Unhinged",
       accessory: "World Order Cap",
     },
-    accent: "#b8f000",
-    glow: "rgba(184, 240, 0, 0.45)",
+    accent: "#e85d04",
+    glow: "transparent",
   },
   {
     id: "chog-042",
@@ -101,8 +101,8 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
       vibe: "Immovable",
       accessory: "Shield Plate",
     },
-    accent: "#5eead4",
-    glow: "rgba(94, 234, 212, 0.4)",
+    accent: "#6b7c5e",
+    glow: "transparent",
   },
   {
     id: "chog-777",
@@ -116,8 +116,8 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
       vibe: "Scheming",
       accessory: "Smoke Bomb",
     },
-    accent: "#fb7185",
-    glow: "rgba(251, 113, 133, 0.4)",
+    accent: "#d4a373",
+    glow: "transparent",
   },
   {
     id: "chog-301",
@@ -131,8 +131,8 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
       vibe: "Restless",
       accessory: "Rocket Skates",
     },
-    accent: "#fdba74",
-    glow: "rgba(253, 186, 116, 0.45)",
+    accent: "#c45c4a",
+    glow: "transparent",
   },
   {
     id: "chog-888",
@@ -146,8 +146,8 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
       vibe: "Menace",
       accessory: "Chaos Bat",
     },
-    accent: "#f87171",
-    glow: "rgba(248, 113, 113, 0.45)",
+    accent: "#e85d04",
+    glow: "transparent",
   },
   {
     id: "chog-113",
@@ -161,8 +161,8 @@ const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
       vibe: "Prank Mode",
       accessory: "Whoopie Cushion",
     },
-    accent: "#a3e635",
-    glow: "rgba(163, 230, 53, 0.4)",
+    accent: "#6b7c5e",
+    glow: "transparent",
   },
 ];
 
