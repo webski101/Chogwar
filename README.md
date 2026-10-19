@@ -19,16 +19,12 @@ Your Chog isn’t a login badge — it’s the fighter. Its traits set the stats
 
 ## Deploy
 
-**Working URL (ugly but live):** [racing-azure-yaw85uh.vercel.app](https://racing-azure-yaw85uh.vercel.app)
+**Clean claim (name it `chog-rival`):**  
+[Claim as chog-rival](https://vercel.com/claim-deployment?code=f1db9fad-da82-40b6-9242-37ba0f22ccf7&name=chog-rival)
 
-Target clean URL: **https://chog-rival.vercel.app**
+Preview before claim: [temporary-turbo-boron-14yzqc8.vercel.app](https://temporary-turbo-boron-14yzqc8.vercel.app)
 
-Do **both** steps (rename alone is not enough):
-
-1. **Settings → General → Project Name** → set to `chog-rival` → Save  
-2. **Settings → Domains** → Add `chog-rival.vercel.app` → assign the latest Ready deploy  
-
-Then open https://chog-rival.vercel.app
+Still on old project: [racing-azure-yaw85uh.vercel.app](https://racing-azure-yaw85uh.vercel.app) — delete that project in Vercel after the new claim works.
 
 ## Run locally
 
