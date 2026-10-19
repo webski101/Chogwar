@@ -19,14 +19,16 @@ Your Chog isn’t a login badge — it’s the fighter. Its traits set the stats
 
 ## Deploy
 
-**Live now:** [racing-azure-yaw85uh.vercel.app](https://racing-azure-yaw85uh.vercel.app)
+**Working URL right now:** [racing-azure-yaw85uh.vercel.app](https://racing-azure-yaw85uh.vercel.app)
 
-`chogwar.vercel.app` is not assigned yet — the claim kept the auto project name. To get the short URL:
+Project is renamed to **chogwar**, but `chogwar.vercel.app` still 404s until the domain is attached. Fix:
 
-1. Open [vercel.com/dashboard](https://vercel.com/dashboard)
-2. Open project **racing-azure-yaw85uh**
-3. **Settings → General → Project Name** → rename to `chogwar`
-4. Save — production URL becomes **https://chogwar.vercel.app**
+1. Open [vercel.com/chogwar/settings/domains](https://vercel.com/mmadubuikechisom1-4579s-projects/chogwar/settings/domains)
+2. Add domain: `chogwar.vercel.app`
+3. If it asks to assign a deployment, pick the latest **Ready** production deploy
+4. Wait ~30s, then open https://chogwar.vercel.app
+
+Or: **Deployments → latest Ready → ⋯ → Promote to Production**
 
 ## Run locally
 
