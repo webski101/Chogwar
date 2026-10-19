@@ -19,8 +19,12 @@ Your Chog isn’t a login badge — it’s the fighter. Its traits set the stats
 
 ## Deploy
 
-- **Your claimed project (live):** [agile-opal-34j1u87.vercel.app](https://agile-opal-34j1u87.vercel.app) — older build (before fighter-art fix)
-- **Latest preview (with fighter art):** [temporary-nimble-zephyr-akixa7z.vercel.app](https://temporary-nimble-zephyr-akixa7z.vercel.app) · [Claim it](https://vercel.com/claim-deployment?code=a36673ea-523f-4fa7-b876-c280ee14ecc2) (claim first if you get 403)
+Target production URL: **[chogwar.vercel.app](https://chogwar.vercel.app)**
+
+Claim the latest build as `chogwar` (sets the project name):  
+[Claim → name it chogwar](https://vercel.com/claim-deployment?code=55435b53-95a0-4ae1-bda9-d876df00e9af&name=chogwar)
+
+Or in the Vercel dashboard: open your project → **Settings → General → Project Name** → set to `chogwar`.
 
 ## Run locally
 
