@@ -19,16 +19,16 @@ Your Chog isn’t a login badge — it’s the fighter. Its traits set the stats
 
 ## Deploy
 
-**Working URL right now:** [racing-azure-yaw85uh.vercel.app](https://racing-azure-yaw85uh.vercel.app)
+**Working URL (ugly but live):** [racing-azure-yaw85uh.vercel.app](https://racing-azure-yaw85uh.vercel.app)
 
-Project is renamed to **chogwar**, but `chogwar.vercel.app` still 404s until the domain is attached. Fix:
+Target clean URL: **https://chog-rival.vercel.app**
 
-1. Open [vercel.com/chogwar/settings/domains](https://vercel.com/mmadubuikechisom1-4579s-projects/chogwar/settings/domains)
-2. Add domain: `chogwar.vercel.app`
-3. If it asks to assign a deployment, pick the latest **Ready** production deploy
-4. Wait ~30s, then open https://chogwar.vercel.app
+Do **both** steps (rename alone is not enough):
 
-Or: **Deployments → latest Ready → ⋯ → Promote to Production**
+1. **Settings → General → Project Name** → set to `chog-rival` → Save  
+2. **Settings → Domains** → Add `chog-rival.vercel.app` → assign the latest Ready deploy  
+
+Then open https://chog-rival.vercel.app
 
 ## Run locally
 
