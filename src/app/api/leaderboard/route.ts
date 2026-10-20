@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { todayKey } from "@/lib/chogs";
+import { todayKey, secondsUntilNextUtcDay } from "@/lib/chogs";
 import {
   entriesForTokens,
   storageMode,
   topEntries,
 } from "@/lib/leaderboard-store";
-import { secondsUntilNextUtcDay } from "@/lib/chogs";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const day = searchParams.get("day") || todayKey();
+  const day = todayKey();
   const mine = searchParams.get("tokens");
   const tokenIds = mine
     ? mine
@@ -17,6 +16,19 @@ export async function GET(request: Request) {
         .map((t) => Number(t.trim()))
         .filter((n) => Number.isInteger(n) && n > 0)
     : [];
+
+  const mode = storageMode();
+  if (mode === "offline") {
+    return NextResponse.json({
+      day,
+      top: [],
+      yours: [],
+      secondsUntilNextRival: secondsUntilNextUtcDay(),
+      storage: "offline",
+      offline: true,
+      message: "Leaderboard offline — add Upstash Redis / Vercel KV env vars",
+    });
+  }
 
   const [top, yours] = await Promise.all([
     topEntries(day, 20),
@@ -28,6 +40,7 @@ export async function GET(request: Request) {
     top,
     yours,
     secondsUntilNextRival: secondsUntilNextUtcDay(),
-    storage: storageMode(),
+    storage: mode,
+    offline: false,
   });
 }

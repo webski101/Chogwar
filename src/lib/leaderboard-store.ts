@@ -1,7 +1,6 @@
 /**
- * Server leaderboard store.
- * Prefers Vercel KV / Upstash Redis REST when env is set.
- * Falls back to an in-process Map (fine for local; cold starts reset on serverless).
+ * Server leaderboard store — Upstash / Vercel KV only.
+ * No silent memory fallback (UI shows "Leaderboard offline" when unset).
  */
 
 export type LeaderEntry = {
@@ -21,19 +20,11 @@ type DayBoard = {
   byToken: Record<string, LeaderEntry>;
 };
 
-const g = globalThis as unknown as {
-  __chogBoard?: Map<string, DayBoard>;
-};
-
-function mem() {
-  if (!g.__chogBoard) g.__chogBoard = new Map();
-  return g.__chogBoard;
-}
-
-function kvConfigured() {
+export function kvConfigured() {
   return Boolean(
     (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) ||
-      (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
+      (process.env.UPSTASH_REDIS_REST_URL &&
+        process.env.UPSTASH_REDIS_REST_TOKEN),
   );
 }
 
@@ -42,7 +33,9 @@ function kvUrl() {
 }
 
 function kvToken() {
-  return process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "";
+  return (
+    process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || ""
+  );
 }
 
 async function kvGet(key: string): Promise<string | null> {
@@ -56,15 +49,36 @@ async function kvGet(key: string): Promise<string | null> {
   return data.result ?? null;
 }
 
-async function kvSet(key: string, value: string) {
+async function kvSet(key: string, value: string, exSeconds?: number) {
   if (!kvConfigured()) return;
-  await fetch(`${kvUrl()}/set/${encodeURIComponent(key)}`, {
+  const url = exSeconds
+    ? `${kvUrl()}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}?EX=${exSeconds}`
+    : `${kvUrl()}/set/${encodeURIComponent(key)}`;
+  if (exSeconds) {
+    await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${kvToken()}` },
+      cache: "no-store",
+    });
+    return;
+  }
+  await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${kvToken()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(value),
+    cache: "no-store",
+  });
+}
+
+async function kvDel(key: string) {
+  if (!kvConfigured()) return;
+  await fetch(`${kvUrl()}/del/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${kvToken()}` },
+    cache: "no-store",
   });
 }
 
@@ -72,26 +86,51 @@ function dayKeyName(dayKey: string) {
   return `chog-rivalry:board:${dayKey}`;
 }
 
-export async function loadDayBoard(dayKey: string): Promise<DayBoard> {
-  const key = dayKeyName(dayKey);
-  if (kvConfigured()) {
-    const raw = await kvGet(key);
-    if (raw) {
-      try {
-        return JSON.parse(raw) as DayBoard;
-      } catch {
-        /* fall through */
-      }
-    }
+function nonceKey(address: string, dayKey: string) {
+  return `chog-rivalry:nonce:${address.toLowerCase()}:${dayKey}`;
+}
+
+export async function issueNonce(
+  address: string,
+  dayKey: string,
+): Promise<string | null> {
+  if (!kvConfigured()) return null;
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const nonce = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+    "",
+  );
+  await kvSet(nonceKey(address, dayKey), nonce, 60 * 60 * 6);
+  return nonce;
+}
+
+export async function consumeNonce(
+  address: string,
+  dayKey: string,
+  nonce: string,
+): Promise<boolean> {
+  if (!kvConfigured()) return false;
+  const key = nonceKey(address, dayKey);
+  const stored = await kvGet(key);
+  if (!stored || stored !== nonce) return false;
+  await kvDel(key);
+  return true;
+}
+
+export async function loadDayBoard(dayKey: string): Promise<DayBoard | null> {
+  if (!kvConfigured()) return null;
+  const raw = await kvGet(dayKeyName(dayKey));
+  if (!raw) return { dayKey, byToken: {} };
+  try {
+    return JSON.parse(raw) as DayBoard;
+  } catch {
+    return { dayKey, byToken: {} };
   }
-  return mem().get(dayKey) ?? { dayKey, byToken: {} };
 }
 
 async function saveDayBoard(board: DayBoard) {
-  mem().set(board.dayKey, board);
-  if (kvConfigured()) {
-    await kvSet(dayKeyName(board.dayKey), JSON.stringify(board));
-  }
+  if (!kvConfigured()) return;
+  await kvSet(dayKeyName(board.dayKey), JSON.stringify(board));
 }
 
 export async function recordRankedResult(input: {
@@ -100,24 +139,22 @@ export async function recordRankedResult(input: {
   wallet: string;
   won: boolean;
   name: string;
-}): Promise<LeaderEntry> {
-  const board = await loadDayBoard(input.dayKey);
+}): Promise<LeaderEntry | null> {
+  if (!kvConfigured()) return null;
+  const board = (await loadDayBoard(input.dayKey)) ?? {
+    dayKey: input.dayKey,
+    byToken: {},
+  };
   const id = String(input.tokenId);
   const prev = board.byToken[id];
   if (prev) {
-    // One ranked result per token per day — keep first submit
     return prev;
   }
   const streakKey = `chog-rivalry:streak:${input.tokenId}`;
-  let streak = 1;
-  if (kvConfigured()) {
-    const prevStreak = await kvGet(streakKey);
-    const n = prevStreak ? Number(prevStreak) : 0;
-    streak = input.won ? (Number.isFinite(n) ? n + 1 : 1) : 0;
-    await kvSet(streakKey, String(streak));
-  } else {
-    streak = input.won ? 1 : 0;
-  }
+  const prevStreak = await kvGet(streakKey);
+  const n = prevStreak ? Number(prevStreak) : 0;
+  const streak = input.won ? (Number.isFinite(n) ? n + 1 : 1) : 0;
+  await kvSet(streakKey, String(streak));
 
   const entry: LeaderEntry = {
     tokenId: input.tokenId,
@@ -135,8 +172,12 @@ export async function recordRankedResult(input: {
   return entry;
 }
 
-export async function topEntries(dayKey: string, limit = 20): Promise<LeaderEntry[]> {
+export async function topEntries(
+  dayKey: string,
+  limit = 20,
+): Promise<LeaderEntry[]> {
   const board = await loadDayBoard(dayKey);
+  if (!board) return [];
   return Object.values(board.byToken)
     .sort(
       (a, b) =>
@@ -153,6 +194,7 @@ export async function entriesForTokens(
   tokenIds: number[],
 ): Promise<LeaderEntry[]> {
   const board = await loadDayBoard(dayKey);
+  if (!board) return [];
   const all = Object.values(board.byToken).sort(
     (a, b) => b.wins - a.wins || a.losses - b.losses,
   );
@@ -165,6 +207,6 @@ export async function entriesForTokens(
     });
 }
 
-export function storageMode() {
-  return kvConfigured() ? "redis" : "memory";
+export function storageMode(): "redis" | "offline" {
+  return kvConfigured() ? "redis" : "offline";
 }

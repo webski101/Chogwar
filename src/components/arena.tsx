@@ -165,7 +165,8 @@ async function signRankedMessage(
   address: string,
   dayKey: string,
   tokenId: number,
-  won: boolean,
+  nonce: string,
+  moveIds: string[],
 ): Promise<{ message: string; signature: string } | null> {
   const eth = (
     window as unknown as {
@@ -175,7 +176,7 @@ async function signRankedMessage(
     }
   ).ethereum;
   if (!eth) return null;
-  const message = `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: ${tokenId}\nWon: ${won}\nAt: ${new Date().toISOString()}`;
+  const message = `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: ${tokenId}\nNonce: ${nonce}\nMoves: ${moveIds.join(",")}`;
   const signature = (await eth.request({
     method: "personal_sign",
     params: [message, address],
@@ -213,10 +214,12 @@ export function Arena() {
   const [rivalStatus, setRivalStatus] = useState<"idle" | "loading" | "error">("idle");
   const [leaderTop, setLeaderTop] = useState<LeaderEntry[]>([]);
   const [leaderYours, setLeaderYours] = useState<LeaderEntry[]>([]);
+  const [leaderOffline, setLeaderOffline] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [floatDmg, setFloatDmg] = useState<FloatDmg[]>([]);
   const [critShake, setCritShake] = useState(false);
   const floatSeq = useRef(0);
+  const rankedMovesRef = useRef<string[]>([]);
 
   const roster = useMemo(() => {
     const map = new Map<string, ChogFighter>();
@@ -395,13 +398,14 @@ export function Arena() {
     fetch(`/api/leaderboard${q}`)
       .then((r) => r.json())
       .then((data) => {
+        setLeaderOffline(Boolean(data.offline) || data.storage === "offline");
         setLeaderTop((data.top as LeaderEntry[]) ?? []);
         setLeaderYours((data.yours as LeaderEntry[]) ?? []);
         if (data.secondsUntilNextRival != null) {
           setCountdown(Number(data.secondsUntilNextRival));
         }
       })
-      .catch(() => {});
+      .catch(() => setLeaderOffline(true));
   }, [owned, day, todayRecord, lastResult]);
 
   useEffect(() => {
@@ -444,12 +448,14 @@ export function Arena() {
     setTurnBusy(false);
     setFloatDmg([]);
     setCritShake(false);
+    rankedMovesRef.current = [];
   }
 
   function beginFight() {
     if (!player || !rival) return;
     if (canRank && todayRecord) return;
     if (phase === "fighting") return;
+    rankedMovesRef.current = [];
     setLive(createBattle(player, rival, day));
     setPhase("fighting");
     setLastResult(null);
@@ -467,6 +473,7 @@ export function Arena() {
   function chooseMove(move: Move) {
     if (!live || !player || !rival || live.done || turnBusy) return;
     setTurnBusy(true);
+    rankedMovesRef.current = [...rankedMovesRef.current, move.id];
     const next = playTurn(live, player, rival, move);
     const last = next.log[next.log.length - 1];
     if (last) {
@@ -504,13 +511,22 @@ export function Arena() {
           ranked,
         );
 
-        if (ranked && address && !isSample) {
+        if (ranked && address && !isSample && !leaderOffline) {
           try {
+            const nonceRes = await fetch(
+              `/api/leaderboard/nonce?address=${address}`,
+            );
+            const nonceData = await nonceRes.json();
+            if (!nonceRes.ok || !nonceData.nonce) {
+              throw new Error(nonceData.error || "Nonce unavailable");
+            }
+            const moveIds = rankedMovesRef.current;
             const signed = await signRankedMessage(
               address,
-              day,
+              nonceData.dayKey || day,
               player.tokenId,
-              finished.winnerId === player.id,
+              nonceData.nonce as string,
+              moveIds,
             );
             if (signed) {
               await fetch("/api/leaderboard/submit", {
@@ -519,17 +535,17 @@ export function Arena() {
                 body: JSON.stringify({
                   address,
                   tokenId: player.tokenId,
-                  won: finished.winnerId === player.id,
                   name: player.name,
-                  dayKey: day,
                   message: signed.message,
                   signature: signed.signature,
                   isSample: false,
+                  moves: moveIds,
+                  nonce: nonceData.nonce,
                 }),
               });
             }
           } catch {
-            /* ranking optional if user rejects sign */
+            /* ranking optional if user rejects sign / offline */
           }
         }
 
@@ -982,15 +998,21 @@ export function Arena() {
           </h2>
           <p className="mt-1 text-sm text-[#a89f94]">
             One ranked result per Genesis per day. Sample holder & practice never
-            write here.
+            write here. Server replays your moves — client win flags are ignored.
           </p>
         </div>
+        {leaderOffline ? (
+          <p className="rounded-md border border-white/10 bg-[#211e1b] px-4 py-8 text-center text-sm text-[#a89f94]">
+            Leaderboard offline — add Upstash Redis (or Vercel KV) env vars on
+            the project to enable ranked storage.
+          </p>
+        ) : null}
         <div className="divide-y divide-white/10 border-y border-white/10">
-          {leaderTop.length === 0 ? (
+          {!leaderOffline && leaderTop.length === 0 ? (
             <p className="py-8 text-center text-sm text-[#a89f94]">
               No ranked fights yet today. Win a Genesis duel to open the board.
             </p>
-          ) : (
+          ) : leaderOffline ? null : (
             leaderTop.map((row, i) => (
               <div key={row.tokenId} className="flex items-center gap-4 py-3">
                 <span className="w-6 font-heading text-lg font-semibold text-[#e85d04]">
