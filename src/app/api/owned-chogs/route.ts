@@ -5,7 +5,7 @@ import {
   ERC721_ABI,
   MONAD_RPC,
 } from "@/lib/monad";
-import { fetchMetadata, fighterFromMetadata } from "@/lib/onchain-chog";
+import { loadFighterByTokenId } from "@/lib/chog-loader";
 
 const client = createPublicClient({
   transport: http(MONAD_RPC),
@@ -33,31 +33,22 @@ export async function GET(request: Request) {
 
     const limited = tokens.slice(0, MAX_TOKENS);
     const fighters = await Promise.all(
-      limited.map(async (tokenId) => {
-        try {
-          const uri = await client.readContract({
-            address: CHOG_GENESIS_ADDRESS,
-            abi,
-            functionName: "tokenURI",
-            args: [tokenId],
-          });
-          const metadata = await fetchMetadata(uri);
-          return fighterFromMetadata(Number(tokenId), metadata);
-        } catch {
-          return fighterFromMetadata(Number(tokenId), {
-            name: `Chog #${tokenId}`,
-            attributes: [],
-          });
-        }
-      }),
+      limited.map((tokenId) => loadFighterByTokenId(Number(tokenId), "onchain")),
     );
 
-    return NextResponse.json({
-      address,
-      count: tokens.length,
-      truncated: tokens.length > MAX_TOKENS,
-      fighters,
-    });
+    return NextResponse.json(
+      {
+        address,
+        count: tokens.length,
+        truncated: tokens.length > MAX_TOKENS,
+        fighters,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=60",
+        },
+      },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load NFTs";
     return NextResponse.json({ error: message }, { status: 502 });
