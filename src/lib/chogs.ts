@@ -1,3 +1,5 @@
+import type { StatBonus } from "@/lib/traits";
+
 export type Archetype = "chaos" | "tank" | "trickster" | "speed" | "brute";
 
 export type ChogTraits = {
@@ -18,191 +20,79 @@ export type ChogStats = {
 export type ChogFighter = {
   id: string;
   tokenId: number;
+  /** Always `Chog #<tokenId>` for identity. */
   name: string;
+  /** On-chain metadata name if different (subtitle). */
+  metaName?: string;
   archetype: Archetype;
   traits: ChogTraits;
   stats: ChogStats;
+  bonuses: StatBonus[];
   accent: string;
   glow: string;
   image?: string;
-  source?: "demo" | "onchain";
+  source?: "practice" | "onchain";
   rawAttributes?: Record<string, string>;
 };
 
-/** Genesis art CDN (Pinata). On-chain metadata image paths use this CID. */
+/** Genesis art CDN (Pinata). */
 export const CHOG_IMAGE_CID =
   "bafybeihau2egcccbdxymeckmmbrqytbfor5gkt3en6d5fsbueymdbq7g6e";
+
+export const CHOG_TOTAL_SUPPLY = 1969;
+
+/** Fixed practice roster tokenIds (real Genesis). */
+export const PRACTICE_TOKEN_IDS = [
+  20, 42, 100, 250, 500, 777, 888, 1200, 1500, 1800,
+] as const;
 
 export function chogArtUrl(assetId: number | string) {
   return `https://gateway.pinata.cloud/ipfs/${CHOG_IMAGE_CID}/${assetId}.webp`;
 }
 
-const ARCHETYPE_BASE: Record<Archetype, ChogStats> = {
-  chaos: { power: 68, speed: 72, chaos: 96, grit: 54 },
-  tank: { power: 74, speed: 42, chaos: 48, grit: 98 },
-  trickster: { power: 58, speed: 88, chaos: 82, grit: 52 },
-  speed: { power: 62, speed: 98, chaos: 60, grit: 50 },
-  brute: { power: 96, speed: 55, chaos: 64, grit: 70 },
-};
-
-function clamp(n: number, min = 30, max = 99) {
-  return Math.max(min, Math.min(max, Math.round(n)));
+export function displayName(tokenId: number) {
+  return `Chog #${tokenId}`;
 }
 
-export function statsFromTraits(
-  archetype: Archetype,
-  traits: ChogTraits,
-  seed: number,
-): ChogStats {
-  const base = ARCHETYPE_BASE[archetype];
-  const wobble = (offset: number) => ((seed * 17 + offset * 31) % 13) - 6;
-
-  let power = base.power + wobble(1);
-  let speed = base.speed + wobble(2);
-  let chaos = base.chaos + wobble(3);
-  let grit = base.grit + wobble(4);
-
-  if (traits.eyes.includes("Laser") || traits.eyes.includes("Rage")) power += 8;
-  if (traits.mouth.includes("Grin") || traits.mouth.includes("Smirk")) chaos += 6;
-  if (traits.fur.includes("Neon") || traits.fur.includes("Volt")) speed += 7;
-  if (traits.vibe.includes("Menace") || traits.vibe.includes("Unhinged")) chaos += 10;
-  if (traits.accessory.includes("Shield") || traits.accessory.includes("Helmet"))
-    grit += 8;
-  if (traits.accessory.includes("Rocket") || traits.accessory.includes("Skates"))
-    speed += 8;
-  if (traits.accessory.includes("Bat") || traits.accessory.includes("Fists"))
-    power += 7;
-
-  return {
-    power: clamp(power),
-    speed: clamp(speed),
-    chaos: clamp(chaos),
-    grit: clamp(grit),
-  };
-}
-
-const DEMO_CHOGS_RAW: Omit<ChogFighter, "stats">[] = [
-  {
-    id: "chog-1969",
-    tokenId: 1969,
-    name: "Chog #1969",
-    archetype: "chaos",
-    traits: {
-      eyes: "Laser Mischief",
-      mouth: "Chaos Grin",
-      fur: "Volt Lime",
-      vibe: "Unhinged",
-      accessory: "World Order Cap",
-    },
-    accent: "#e85d04",
-    glow: "transparent",
-    // Art asset ids from on-chain metadata (tokenId ≠ image index).
-    image: chogArtUrl(1461),
-  },
-  {
-    id: "chog-042",
-    tokenId: 42,
-    name: "Chog #42",
-    archetype: "tank",
-    traits: {
-      eyes: "Stone Stare",
-      mouth: "Flat Line",
-      fur: "Slate Moss",
-      vibe: "Immovable",
-      accessory: "Shield Plate",
-    },
-    accent: "#6b7c5e",
-    glow: "transparent",
-    image: chogArtUrl(1503),
-  },
-  {
-    id: "chog-777",
-    tokenId: 777,
-    name: "Chog #777",
-    archetype: "trickster",
-    traits: {
-      eyes: "Sideways Glance",
-      mouth: "Smirk",
-      fur: "Ink Black",
-      vibe: "Scheming",
-      accessory: "Smoke Bomb",
-    },
-    accent: "#d4a373",
-    glow: "transparent",
-    image: chogArtUrl(269),
-  },
-  {
-    id: "chog-301",
-    tokenId: 301,
-    name: "Chog #301",
-    archetype: "speed",
-    traits: {
-      eyes: "Wide Alert",
-      mouth: "Open Yell",
-      fur: "Neon Peach",
-      vibe: "Restless",
-      accessory: "Rocket Skates",
-    },
-    accent: "#c45c4a",
-    glow: "transparent",
-    image: chogArtUrl(1762),
-  },
-  {
-    id: "chog-888",
-    tokenId: 888,
-    name: "Chog #888",
-    archetype: "brute",
-    traits: {
-      eyes: "Rage Rings",
-      mouth: "Tooth Gap",
-      fur: "Brick Red",
-      vibe: "Menace",
-      accessory: "Chaos Bat",
-    },
-    accent: "#e85d04",
-    glow: "transparent",
-    image: chogArtUrl(380),
-  },
-  {
-    id: "chog-113",
-    tokenId: 113,
-    name: "Chog #113",
-    archetype: "chaos",
-    traits: {
-      eyes: "Spiral Hypno",
-      mouth: "Tongue Out",
-      fur: "Mint Static",
-      vibe: "Prank Mode",
-      accessory: "Whoopie Cushion",
-    },
-    accent: "#6b7c5e",
-    glow: "transparent",
-    image: chogArtUrl(1574),
-  },
-];
-
-export const DEMO_CHOGS: ChogFighter[] = DEMO_CHOGS_RAW.map((chog) => ({
-  ...chog,
-  stats: statsFromTraits(chog.archetype, chog.traits, chog.tokenId),
-  source: "demo" as const,
-}));
-
-export function getChogById(id: string) {
-  return DEMO_CHOGS.find((c) => c.id === id);
-}
-
-export function pickRival(playerId: string, dayKey: string): ChogFighter {
-  const pool = DEMO_CHOGS.filter((c) => c.id !== playerId);
-  let hash = 0;
-  const key = `${playerId}:${dayKey}`;
-  for (let i = 0; i < key.length; i++) {
-    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  }
-  return pool[hash % pool.length];
+export function fighterId(tokenId: number, source: "practice" | "onchain") {
+  return source === "practice" ? `practice-${tokenId}` : `onchain-${tokenId}`;
 }
 
 export function todayKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
+}
+
+/** Deterministic daily rival tokenId in 1..totalSupply, excluding player's. */
+export function pickRivalTokenId(
+  playerTokenId: number,
+  dayKey: string,
+  totalSupply = CHOG_TOTAL_SUPPLY,
+): number {
+  let hash = 0;
+  const key = `${playerTokenId}:${dayKey}`;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  // Map to 1..totalSupply
+  let rival = (hash % totalSupply) + 1;
+  if (rival === playerTokenId) {
+    rival = rival === totalSupply ? 1 : rival + 1;
+  }
+  return rival;
+}
+
+/** Seconds until next UTC midnight (next daily rival). */
+export function secondsUntilNextUtcDay(now = new Date()) {
+  const next = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+    0,
+    0,
+    0,
+    0,
+  );
+  return Math.max(0, Math.floor((next - now.getTime()) / 1000));
 }
 
 export const ARCHETYPE_LABEL: Record<Archetype, string> = {
@@ -212,3 +102,9 @@ export const ARCHETYPE_LABEL: Record<Archetype, string> = {
   speed: "Speed",
   brute: "Brute",
 };
+
+const ACCENTS = ["#e85d04", "#6b7c5e", "#d4a373", "#c45c4a", "#f3ebe2", "#8a7355"];
+
+export function accentFor(tokenId: number) {
+  return ACCENTS[tokenId % ACCENTS.length];
+}

@@ -1,6 +1,16 @@
-import type { Archetype, ChogFighter, ChogTraits } from "@/lib/chogs";
-import { chogArtUrl, statsFromTraits } from "@/lib/chogs";
+import type { ChogFighter } from "@/lib/chogs";
+import {
+  accentFor,
+  chogArtUrl,
+  displayName,
+  fighterId,
+} from "@/lib/chogs";
 import { ipfsToHttp } from "@/lib/monad";
+import {
+  buildFromAttrs,
+  legacyTraitsFromAttrs,
+  type AttrBag,
+} from "@/lib/traits";
 
 export type NftAttribute = {
   trait_type: string;
@@ -14,77 +24,45 @@ export type ChogMetadata = {
   attributes?: NftAttribute[];
 };
 
-function attrMap(attributes: NftAttribute[] = []) {
-  const map = new Map<string, string>();
+export function attrMap(attributes: NftAttribute[] = []): AttrBag {
+  const map: AttrBag = {};
   for (const a of attributes) {
-    map.set(a.trait_type.toLowerCase(), String(a.value));
+    map[a.trait_type.toLowerCase()] = String(a.value);
   }
   return map;
-}
-
-function pickArchetype(map: Map<string, string>): Archetype {
-  const eyes = map.get("eyes") ?? "";
-  const mouth = map.get("mouth") ?? "";
-  const head = map.get("head") ?? "";
-  const tier = map.get("tier") ?? "";
-  const skin = map.get("skin") ?? "";
-
-  if (/laser|rage|blood/i.test(eyes) || /legendary|mythic/i.test(tier)) {
-    return "chaos";
-  }
-  if (/helmet|cap|crown|armor/i.test(head) || /worried|flat/i.test(mouth)) {
-    return /worried|flat/i.test(mouth) ? "tank" : "trickster";
-  }
-  if (/gold|chrome|neon/i.test(skin)) return "speed";
-  if (/angry|fangs|tooth|smirk/i.test(mouth)) return "brute";
-  if (/star|halo|visor/i.test(head)) return "trickster";
-  return "chaos";
-}
-
-function toLegacyTraits(map: Map<string, string>): ChogTraits {
-  return {
-    eyes: map.get("eyes") ?? "Unknown",
-    mouth: map.get("mouth") ?? "Unknown",
-    fur: map.get("skin") ?? map.get("base") ?? "Unknown",
-    vibe: map.get("tier") ?? "Common",
-    accessory: map.get("head") ?? map.get("background") ?? "None",
-  };
-}
-
-const ACCENTS = ["#e85d04", "#6b7c5e", "#d4a373", "#c45c4a", "#f3ebe2", "#8a7355"];
-
-function accentFor(tokenId: number) {
-  return ACCENTS[tokenId % ACCENTS.length];
 }
 
 export function fighterFromMetadata(
   tokenId: number,
   metadata: ChogMetadata,
+  source: "practice" | "onchain" = "onchain",
 ): ChogFighter {
-  const map = attrMap(metadata.attributes);
-  const archetype = pickArchetype(map);
-  const traits = toLegacyTraits(map);
-  const accent = accentFor(tokenId);
+  const attrs = attrMap(metadata.attributes);
+  const built = buildFromAttrs(attrs, tokenId);
+  const metaName = metadata.name?.replace(/^CHOG\s*/i, "Chog ").trim();
+  const name = displayName(tokenId);
   return {
-    id: `onchain-${tokenId}`,
+    id: fighterId(tokenId, source),
     tokenId,
-    name: metadata.name?.replace(/^CHOG/i, "Chog") ?? `Chog #${tokenId}`,
-    archetype,
-    traits,
-    stats: statsFromTraits(archetype, traits, tokenId),
-    accent,
+    name,
+    metaName: metaName && metaName !== name ? metaName : undefined,
+    archetype: built.archetype,
+    traits: legacyTraitsFromAttrs(attrs),
+    stats: built.stats,
+    bonuses: built.bonuses,
+    accent: accentFor(tokenId),
     glow: "transparent",
-    image: metadata.image
-      ? ipfsToHttp(metadata.image)
-      : chogArtUrl(tokenId),
-    source: "onchain",
-    rawAttributes: Object.fromEntries(map),
+    image: metadata.image ? ipfsToHttp(metadata.image) : chogArtUrl(tokenId),
+    source,
+    rawAttributes: attrs,
   };
 }
 
 export async function fetchMetadata(tokenURI: string): Promise<ChogMetadata> {
   const url = ipfsToHttp(tokenURI);
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetch(url, {
+    next: { revalidate: 86400 },
+  });
   if (!res.ok) {
     throw new Error(`Metadata fetch failed (${res.status})`);
   }
