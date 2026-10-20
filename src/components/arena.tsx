@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { ChogPortrait } from "@/components/chog-portrait";
 import { StatBreakdown } from "@/components/stat-breakdown";
@@ -213,9 +213,10 @@ export function Arena() {
   const [rivalStatus, setRivalStatus] = useState<"idle" | "loading" | "error">("idle");
   const [leaderTop, setLeaderTop] = useState<LeaderEntry[]>([]);
   const [leaderYours, setLeaderYours] = useState<LeaderEntry[]>([]);
-  const [countdown, setCountdown] = useState(secondsUntilNextUtcDay());
+  const [countdown, setCountdown] = useState(0);
   const [floatDmg, setFloatDmg] = useState<FloatDmg[]>([]);
   const [critShake, setCritShake] = useState(false);
+  const floatSeq = useRef(0);
 
   const roster = useMemo(() => {
     const map = new Map<string, ChogFighter>();
@@ -252,7 +253,9 @@ export function Arena() {
   // Practice roster
   useEffect(() => {
     let cancelled = false;
-    setPracticeStatus("loading");
+    queueMicrotask(() => {
+      if (!cancelled) setPracticeStatus("loading");
+    });
     fetch("/api/practice")
       .then(async (res) => {
         const data = await res.json();
@@ -357,7 +360,9 @@ export function Arena() {
   useEffect(() => {
     if (!player) return;
     let cancelled = false;
-    setRivalStatus("loading");
+    queueMicrotask(() => {
+      if (!cancelled) setRivalStatus("loading");
+    });
     fetch(`/api/rival?tokenId=${player.tokenId}&day=${day}`)
       .then(async (res) => {
         const data = await res.json();
@@ -400,9 +405,9 @@ export function Arena() {
   }, [owned, day, todayRecord, lastResult]);
 
   useEffect(() => {
-    const t = window.setInterval(() => {
-      setCountdown((c) => Math.max(0, c - 1));
-    }, 1000);
+    const tick = () => setCountdown(secondsUntilNextUtcDay());
+    const t = window.setInterval(tick, 1000);
+    queueMicrotask(tick);
     return () => window.clearInterval(t);
   }, []);
 
@@ -451,7 +456,8 @@ export function Arena() {
   }
 
   function pushFloat(side: "player" | "rival", text: string, crit: boolean) {
-    const id = Date.now() + Math.random();
+    floatSeq.current += 1;
+    const id = floatSeq.current;
     setFloatDmg((prev) => [...prev, { id, side, text, crit }]);
     window.setTimeout(() => {
       setFloatDmg((prev) => prev.filter((f) => f.id !== id));

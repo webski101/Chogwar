@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadFighterByTokenId } from "@/lib/chog-loader";
 
-export const revalidate = 86400;
-
 type Params = { params: Promise<{ tokenId: string }> };
 
 export async function GET(_request: Request, { params }: Params) {

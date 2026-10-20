@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { PRACTICE_TOKEN_IDS } from "@/lib/chogs";
 import { loadFighterByTokenId } from "@/lib/chog-loader";
 
-export const revalidate = 86400;
-
 export async function GET() {
   try {
     const fighters = await Promise.all(
