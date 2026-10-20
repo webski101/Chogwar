@@ -18,9 +18,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://chogwarr.vercel.app"),
   title: "Chog Rivalry — Your NFT is the fighter",
   description:
-    "Turn-based duels where your Chog Genesis traits decide the fight. Built for Chogathon 2026.",
+    "Daily turn-based duels where your Chog Genesis traits decide the fight. Built for Chogathon 2026 on Monad.",
+  openGraph: {
+    title: "Chog Rivalry — Your NFT is the fighter",
+    description:
+      "Daily turn-based duels where your Chog Genesis traits decide the fight. Built for Chogathon 2026 on Monad.",
+    url: "https://chogwarr.vercel.app",
+    siteName: "Chog Rivalry",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chog Rivalry — Your NFT is the fighter",
+    description:
+      "Daily turn-based duels where your Chog Genesis traits decide the fight.",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

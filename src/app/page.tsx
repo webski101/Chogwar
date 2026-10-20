@@ -65,7 +65,7 @@ export default function Home() {
       <Arena />
 
       <footer className="mt-auto border-t border-white/10 py-8 text-center text-xs text-[#a89f94]">
-        Chogathon 2026 · Monad Genesis traits · practice roster when you need it
+        Chog Rivalry · Chogathon 2026 · read-only on Monad · repo: Chogwar
       </footer>
     </div>
   );
