@@ -1,15 +1,10 @@
 import type { ChogFighter } from "@/lib/chogs";
-import {
-  accentFor,
-  chogArtUrl,
-  displayName,
-  fighterId,
-} from "@/lib/chogs";
-import { ipfsToHttp } from "@/lib/monad";
+import { accentFor, displayName, fighterId } from "@/lib/chogs";
+import { ipfsToHttp } from "@/lib/ipfs";
 import {
   buildFromAttrs,
   legacyTraitsFromAttrs,
-  type AttrBag,
+  type AttrMap,
 } from "@/lib/traits";
 
 export type NftAttribute = {
@@ -24,12 +19,23 @@ export type ChogMetadata = {
   attributes?: NftAttribute[];
 };
 
-export function attrMap(attributes: NftAttribute[] = []): AttrBag {
-  const map: AttrBag = {};
+export function attrMap(attributes: NftAttribute[] = []): AttrMap {
+  const map: AttrMap = {};
   for (const a of attributes) {
     map[a.trait_type.toLowerCase()] = String(a.value);
   }
   return map;
+}
+
+/** True when metadata has real trait attributes (not empty / broken). */
+export function hasRealTraits(metadata: ChogMetadata): boolean {
+  const attrs = metadata.attributes;
+  if (!attrs || attrs.length < 3) return false;
+  const map = attrMap(attrs);
+  // Need at least a couple of the core combat-facing traits
+  const keys = ["eyes", "mouth", "head", "body", "skin", "tier"];
+  const hit = keys.filter((k) => Boolean(map[k])).length;
+  return hit >= 2;
 }
 
 export function fighterFromMetadata(
@@ -37,10 +43,17 @@ export function fighterFromMetadata(
   metadata: ChogMetadata,
   source: "practice" | "onchain" = "onchain",
 ): ChogFighter {
+  if (!hasRealTraits(metadata)) {
+    throw new Error(`No real traits for token ${tokenId}`);
+  }
   const attrs = attrMap(metadata.attributes);
   const built = buildFromAttrs(attrs, tokenId);
   const metaName = metadata.name?.replace(/^CHOG\s*/i, "Chog ").trim();
   const name = displayName(tokenId);
+
+  // Art id ≠ token id — never invent /{tokenId}.webp. Require metadata.image.
+  const image = metadata.image ? ipfsToHttp(metadata.image) : undefined;
+
   return {
     id: fighterId(tokenId, source),
     tokenId,
@@ -52,19 +65,14 @@ export function fighterFromMetadata(
     bonuses: built.bonuses,
     accent: accentFor(tokenId),
     glow: "transparent",
-    image: metadata.image ? ipfsToHttp(metadata.image) : chogArtUrl(tokenId),
+    image,
     source,
     rawAttributes: attrs,
   };
 }
 
+/** @deprecated use fetchIpfsJson via chog-loader — kept for scripts */
 export async function fetchMetadata(tokenURI: string): Promise<ChogMetadata> {
-  const url = ipfsToHttp(tokenURI);
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },
-  });
-  if (!res.ok) {
-    throw new Error(`Metadata fetch failed (${res.status})`);
-  }
-  return (await res.json()) as ChogMetadata;
+  const { fetchIpfsJson } = await import("@/lib/ipfs");
+  return fetchIpfsJson<ChogMetadata>(tokenURI);
 }

@@ -41,10 +41,4 @@ export function shortenAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export function ipfsToHttp(uri: string) {
-  if (!uri) return uri;
-  if (uri.startsWith("ipfs://")) {
-    return `https://gateway.pinata.cloud/ipfs/${uri.slice("ipfs://".length)}`;
-  }
-  return uri;
-}
+export { ipfsToHttp } from "@/lib/ipfs";

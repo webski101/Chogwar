@@ -1,16 +1,29 @@
 import { NextResponse } from "next/server";
 import { PRACTICE_TOKEN_IDS } from "@/lib/chogs";
-import { loadFighterByTokenId } from "@/lib/chog-loader";
+import {
+  loadFighterByTokenId,
+  MetadataLoadError,
+  NO_STORE_HEADERS,
+} from "@/lib/chog-loader";
+import type { ChogFighter } from "@/lib/chogs";
 
 export async function GET() {
   try {
-    const fighters = await Promise.all(
+    const settled = await Promise.allSettled(
       PRACTICE_TOKEN_IDS.map((id) => loadFighterByTokenId(id, "practice")),
     );
+    const fighters: ChogFighter[] = [];
+    for (const r of settled) {
+      if (r.status === "fulfilled") fighters.push(r.value);
+    }
+    if (fighters.length === 0) {
+      throw new MetadataLoadError("Practice roster metadata unavailable");
+    }
     return NextResponse.json(
       {
         label: "Practice — unranked",
         fighters,
+        failed: PRACTICE_TOKEN_IDS.length - fighters.length,
       },
       {
         headers: {
@@ -19,7 +32,11 @@ export async function GET() {
       },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Practice load failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const message =
+      error instanceof Error ? error.message : "Practice load failed";
+    return NextResponse.json(
+      { error: message },
+      { status: 502, headers: NO_STORE_HEADERS },
+    );
   }
 }

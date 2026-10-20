@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { pickRivalTokenId, todayKey } from "@/lib/chogs";
-import { loadFighterByTokenId, readTotalSupply } from "@/lib/chog-loader";
-import { secondsUntilNextUtcDay } from "@/lib/chogs";
+import { todayKey, secondsUntilNextUtcDay } from "@/lib/chogs";
+import {
+  loadDailyRival,
+  MetadataLoadError,
+  NO_STORE_HEADERS,
+} from "@/lib/chog-loader";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,13 +12,17 @@ export async function GET(request: Request) {
   const day = searchParams.get("day") || todayKey();
 
   if (!Number.isInteger(playerTokenId) || playerTokenId < 1) {
-    return NextResponse.json({ error: "tokenId required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "tokenId required" },
+      { status: 400, headers: NO_STORE_HEADERS },
+    );
   }
 
   try {
-    const supply = await readTotalSupply();
-    const rivalTokenId = pickRivalTokenId(playerTokenId, day, supply);
-    const fighter = await loadFighterByTokenId(rivalTokenId, "onchain");
+    const { rivalTokenId, fighter, totalSupply } = await loadDailyRival(
+      playerTokenId,
+      day,
+    );
     return NextResponse.json(
       {
         day,
@@ -23,7 +30,7 @@ export async function GET(request: Request) {
         rivalTokenId,
         fighter,
         secondsUntilNextRival: secondsUntilNextUtcDay(),
-        totalSupply: supply,
+        totalSupply,
       },
       {
         headers: {
@@ -32,7 +39,15 @@ export async function GET(request: Request) {
       },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Rival failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const message =
+      error instanceof MetadataLoadError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Rival failed";
+    return NextResponse.json(
+      { error: message },
+      { status: 502, headers: NO_STORE_HEADERS },
+    );
   }
 }
