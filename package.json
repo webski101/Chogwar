@@ -6,7 +6,8 @@
     "dev": "next dev --port 3847",
     "build": "next build",
     "start": "next start --port 3847",
-    "lint": "eslint"
+    "lint": "eslint",
+    "trait-distribution": "tsx scripts/trait-distribution.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -30,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
