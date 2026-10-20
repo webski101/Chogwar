@@ -144,21 +144,57 @@ export function maxHpFor(fighter: ChogFighter): number {
   return Math.round(90 + fighter.stats.grit * 0.55);
 }
 
+function tierRank(tier: string): number {
+  switch (tier.trim().toLowerCase()) {
+    case "common":
+      return 0;
+    case "uncommon":
+      return 1;
+    case "rare":
+      return 2;
+    case "epic":
+      return 3;
+    case "legendary":
+    case "mythic":
+      return 4;
+    default:
+      return 0;
+  }
+}
+
 /** Trait edge from real metadata (eyes / mouth / head / tier). */
 export function traitEdge(attacker: ChogFighter, defender: ChogFighter): number {
   let edge = 1;
-  const aEyes = (attacker.rawAttributes?.eyes ?? attacker.traits.eyes).toLowerCase();
-  const dMouth = (defender.rawAttributes?.mouth ?? defender.traits.mouth).toLowerCase();
-  const aHead = (attacker.rawAttributes?.head ?? attacker.traits.accessory).toLowerCase();
-  const dTier = (defender.rawAttributes?.tier ?? attacker.traits.vibe).toLowerCase();
-  const aTier = (attacker.rawAttributes?.tier ?? attacker.traits.vibe).toLowerCase();
+  const aEyes = (
+    attacker.rawAttributes?.eyes ?? attacker.traits.eyes
+  ).toLowerCase();
+  const dMouth = (
+    defender.rawAttributes?.mouth ?? defender.traits.mouth
+  ).toLowerCase();
+  const aHead = (
+    attacker.rawAttributes?.head ?? attacker.traits.accessory
+  ).toLowerCase();
+  const aTier = (
+    attacker.rawAttributes?.tier ?? attacker.traits.vibe
+  ).toLowerCase();
+  // Defender tier — never fall back to attacker's vibe
+  const dTier = (
+    defender.rawAttributes?.tier ?? defender.traits.vibe
+  ).toLowerCase();
 
-  if (/laser|rage|hypno|blood/.test(aEyes) && /worried|smile|smirk|grin/.test(dMouth)) {
+  if (
+    /laser|rage|hypno|blood/.test(aEyes) &&
+    /worried|smile|smirk|grin/.test(dMouth)
+  ) {
     edge += 0.12;
   }
   if (/helmet|armor|cap|crown/.test(aHead)) edge += 0.06;
-  if (/legendary|mythic|rare/.test(aTier) && /common/.test(dTier)) edge += 0.1;
-  if (/common/.test(aTier) && /legendary|mythic/.test(dTier)) edge -= 0.08;
+
+  const aRank = tierRank(aTier);
+  const dRank = tierRank(dTier);
+  if (aRank >= 2 && dRank === 0) edge += 0.1; // rare+ vs common
+  if (aRank === 0 && dRank >= 3) edge -= 0.08; // common vs epic/legendary
+  if (aRank === 3 && dRank <= 1) edge += 0.06; // epic vs common/uncommon
 
   return Math.max(0.85, Math.min(1.25, edge));
 }
