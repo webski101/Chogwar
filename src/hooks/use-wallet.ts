@@ -21,9 +21,11 @@ function getProvider(): EthProvider | undefined {
 type WalletSnap = {
   address: string | null;
   hasProvider: boolean;
+  /** Sample holder mode — view-only, never ranked. */
+  isSample: boolean;
 };
 
-let snap: WalletSnap = { address: null, hasProvider: false };
+let snap: WalletSnap = { address: null, hasProvider: false, isSample: false };
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -47,7 +49,11 @@ function getSnapshot() {
 }
 
 function getServerSnapshot() {
-  return JSON.stringify({ address: null, hasProvider: false } satisfies WalletSnap);
+  return JSON.stringify({
+    address: null,
+    hasProvider: false,
+    isSample: false,
+  } satisfies WalletSnap);
 }
 
 async function ensureMonad(provider: EthProvider) {
@@ -83,7 +89,7 @@ async function ensureMonad(provider: EthProvider) {
 
 export function useWallet() {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const { address, hasProvider } = JSON.parse(raw) as WalletSnap;
+  const { address, hasProvider, isSample } = JSON.parse(raw) as WalletSnap;
   const [status, setStatus] = useState<"idle" | "connecting" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -94,7 +100,7 @@ export function useWallet() {
 
     const onAccounts = (...args: unknown[]) => {
       const accounts = args[0] as string[] | undefined;
-      setSnap({ address: accounts?.[0] ?? null });
+      setSnap({ address: accounts?.[0] ?? null, isSample: false });
     };
     const onChain = () => {
       emit();
@@ -127,7 +133,11 @@ export function useWallet() {
       const accounts = (await provider.request({
         method: "eth_requestAccounts",
       })) as string[];
-      setSnap({ address: accounts[0] ?? null, hasProvider: true });
+      setSnap({
+        address: accounts[0] ?? null,
+        hasProvider: true,
+        isSample: false,
+      });
       setStatus("idle");
     } catch (err) {
       setStatus("error");
@@ -136,16 +146,17 @@ export function useWallet() {
   }, []);
 
   const disconnect = useCallback(() => {
-    setSnap({ address: null });
+    setSnap({ address: null, isSample: false });
     setError(null);
     setStatus("idle");
   }, []);
 
-  /** Load a known Genesis holder without a browser wallet (demo / screenshots). */
+  /** Load a known Genesis holder without a browser wallet (view-only, not ranked). */
   const useSampleHolder = useCallback(() => {
     setSnap({
       address: "0xfa30b6ecBc2038e349Aa41a45DBeb859B3a9D9aE",
       hasProvider: snap.hasProvider,
+      isSample: true,
     });
     setError(null);
     setStatus("idle");
@@ -154,6 +165,7 @@ export function useWallet() {
   return {
     address,
     connected: Boolean(address),
+    isSample,
     status,
     error,
     hasProvider,

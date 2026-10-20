@@ -150,6 +150,17 @@
   }
 }
 
+@keyframes float-dmg {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-36px) scale(1.08);
+  }
+}
+
 .animate-chog-bounce {
   animation: chog-bounce 1.2s ease-in-out infinite;
 }
@@ -176,6 +187,10 @@
 
 .animate-stage-pulse {
   animation: stage-pulse 5s ease-in-out infinite;
+}
+
+.animate-float-dmg {
+  animation: float-dmg 0.9s ease-out forwards;
 }
 
 .grain {

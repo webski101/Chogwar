@@ -8,6 +8,7 @@ export function WalletBar() {
   const {
     address,
     connected,
+    isSample,
     status,
     error,
     hasProvider,
@@ -20,6 +21,11 @@ export function WalletBar() {
     <div className="flex flex-col items-end gap-1">
       {connected && address ? (
         <div className="flex items-center gap-2">
+          {isSample && (
+            <span className="rounded border border-[#e85d04]/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#e85d04]">
+              Sample · view-only
+            </span>
+          )}
           <span className="font-mono text-xs text-[#d9d0c5]">
             {shortenAddress(address)}
           </span>

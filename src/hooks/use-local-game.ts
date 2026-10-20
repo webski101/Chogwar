@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { DEMO_CHOGS, todayKey } from "@/lib/chogs";
+import { fighterId, todayKey } from "@/lib/chogs";
 import type { BattleResult } from "@/lib/battle";
 import {
   applyBoardResult,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/storage";
 
 const listeners = new Set<() => void>();
+const DEFAULT_ID = fighterId(20, "practice");
 
 function emit() {
   listeners.forEach((l) => l());
@@ -29,10 +30,7 @@ function emit() {
 function subscribe(listener: () => void) {
   listeners.add(listener);
   const onStorage = (e: StorageEvent) => {
-    if (
-      e.key?.startsWith("chog-rivalry:") ||
-      e.key === null
-    ) {
+    if (e.key?.startsWith("chog-rivalry:") || e.key === null) {
       listener();
     }
   };
@@ -45,7 +43,7 @@ function subscribe(listener: () => void) {
 
 function getSnapshot() {
   return JSON.stringify({
-    selectedId: loadSelectedId() ?? DEMO_CHOGS[0].id,
+    selectedId: loadSelectedId() ?? DEFAULT_ID,
     board: loadBoard(),
     duels: loadDuels(),
     rematchTick: localStorage.getItem("chog-rivalry:rematch") ?? "",
@@ -55,11 +53,10 @@ function getSnapshot() {
 
 function getServerSnapshot() {
   return JSON.stringify({
-    selectedId: DEMO_CHOGS[0].id,
+    selectedId: DEFAULT_ID,
     board: [] as BoardEntry[],
     duels: [] as DuelRecord[],
     rematchTick: "",
-    // Stable during prerender — real day is read only on the client.
     day: "1970-01-01",
   });
 }
@@ -89,13 +86,19 @@ export function useLocalGame() {
     emit();
   }, []);
 
+  /**
+   * Record a duel. Practice / sample fights pass ranked=false and never touch
+   * the season board, daily duel lock, or rematch state.
+   */
   const recordDuel = useCallback(
     (
       playerId: string,
       rivalId: string,
       result: BattleResult,
       meta?: Record<string, { tokenId?: number; name?: string; accent?: string }>,
-    ): DuelRecord => {
+      ranked = true,
+    ): DuelRecord | null => {
+      if (!ranked) return null;
       const record: DuelRecord = {
         dayKey: todayKey(),
         playerId,
