@@ -4,7 +4,7 @@ import { ipfsToHttp } from "@/lib/ipfs";
 import {
   buildFromAttrs,
   legacyTraitsFromAttrs,
-  type AttrMap,
+  type AttrBag,
 } from "@/lib/traits";
 
 export type NftAttribute = {
@@ -19,8 +19,8 @@ export type ChogMetadata = {
   attributes?: NftAttribute[];
 };
 
-export function attrMap(attributes: NftAttribute[] = []): AttrMap {
-  const map: AttrMap = {};
+export function attrMap(attributes: NftAttribute[] = []): AttrBag {
+  const map: AttrBag = {};
   for (const a of attributes) {
     map[a.trait_type.toLowerCase()] = String(a.value);
   }

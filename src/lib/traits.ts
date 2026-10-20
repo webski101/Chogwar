@@ -261,7 +261,7 @@ export function scoreArchetypes(attrs: AttrBag): ScoreBag {
   return scores;
 }
 
-export function archetypeFromAttrs(attrs: AttrMap, tokenId = 0): Archetype {
+export function archetypeFromAttrs(attrs: AttrBag, tokenId = 0): Archetype {
   const scores = scoreArchetypes(attrs);
   let bestScore = -Infinity;
   for (const arch of ARCHETYPES) {
