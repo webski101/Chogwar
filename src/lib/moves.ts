@@ -226,10 +226,12 @@ export function resolveExchange(
   const swing = 0.9 + rand() * 0.2;
   const critChance = attacker.stats.chaos / 380 + (advantage === "win" ? 0.08 : 0);
   const crit = rand() < critChance;
+  // Crit stays ×1.45; then scale so typical duels last 4–6 rounds.
   if (crit) mult *= 1.45;
 
-  const raw = Math.max(4, (offense - defense * 0.55) * mult * swing);
-  const damage = Math.round(raw);
+  const DAMAGE_SCALE = 0.4;
+  const raw = Math.max(0, (offense - defense * 0.55) * mult * swing);
+  const damage = Math.max(3, Math.round(raw * DAMAGE_SCALE));
 
   const advText =
     advantage === "win"

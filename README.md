@@ -44,6 +44,18 @@ Matching is **case-insensitive**. Archetype is **score-based** (highest wins; ti
 
 Stat bonuses (shown as **Why these stats**) still apply on top of lowered archetype bases with a soft cap above 90 so values spread ~45–99.
 
+**Legendary 1/1s** (Base `1:1` + Tier Legendary — 10 pieces) are accepted even with only two attributes. UI shows the 1/1 title (e.g. Krown) and a **Legendary 1/1** badge. TokenIds: 561, 900, 942, 1002, 1481, 1514, 1667, 1798, 1881, 1884.
+
+## Fight length
+
+Damage is scaled by **`DAMAGE_SCALE = 0.4`** (min 3 per hit; crit still ×1.45) so typical duels last longer than 1–2 rounds.
+
+```bash
+npm run fight-length
+```
+
+Random-move duel length (`DAMAGE_SCALE=0.4`): **median 5 rounds** (p10 **4** / p90 **7**) across 2400 sims (8 pairs × 300).
+
 | Trait | Bonus |
 | --- | --- |
 | fire laser eyes | +8 power |
@@ -110,10 +122,10 @@ Monad RPC (chain 143)
   → Client game (Arena): pick fighter → daily rival → turn-based duel → optional ranked submit
 ```
 
-- Metadata: on-chain `tokenURI` → bundled `data/metadata/<id>.json` first, then IPFS (Pinata → dweb.link) with long revalidate. **502 + no-store** on failure (never trait-less success). Art id ≠ token id — image always from metadata.
-- Daily rival: hash → tokenId ≠ player; on metadata failure, advance to next id.
-- Ranked: server issues nonce, client signs day + token + nonce + move ids; server reloads fighters, replays `createBattle`/`playTurn`, derives winner. Client `won` is ignored.
-- Leaderboard storage: **Upstash Redis / Vercel KV required** for durable ranked results. Without env vars the UI shows judge-friendly ranked-board copy (env hint only in development).
+- Metadata: on-chain `tokenURI` → bundled `data/metadata/<id>.json` first, then IPFS (Pinata → dweb → 4everland) with long revalidate. **502 + no-store** on failure (never trait-less success). Art id ≠ token id — `fighter.image` is `/api/art/<artId>` (Pinata proxy, immutable cache).
+- Daily rival: hash → tokenId ≠ player; on metadata failure, advance to next id; client preloads rival art as soon as `/api/rival` returns.
+- Ranked: server issues nonce, client signs day + token + rival + nonce + move ids; server replays moves, derives winner. Client `won` is ignored.
+- Leaderboard storage: **Upstash Redis / Vercel KV required** for durable ranked results. Offline UI: “Ranked board opens soon…” (env hint only in development).
 
 ### Env (required for ranked leaderboard)
 
