@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       storage: "offline",
       offline: true,
       message:
-        "Ranked board: connect a wallet that holds a Chog — results verified on the server",
+        "Ranked board opens soon — results will be verified on the server",
       hint:
         process.env.NODE_ENV === "development"
           ? "Dev: add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (or KV_*)"
