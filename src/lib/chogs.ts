@@ -24,6 +24,10 @@ export type ChogFighter = {
   name: string;
   /** On-chain metadata name if different (subtitle). */
   metaName?: string;
+  /** 1/1 title extracted from metadata (e.g. "Krown"). */
+  oneOfOneTitle?: string;
+  /** Base "1:1" or Tier Legendary/Epic with sparse attributes. */
+  legendaryOneOfOne?: boolean;
   archetype: Archetype;
   traits: ChogTraits;
   stats: ChogStats;

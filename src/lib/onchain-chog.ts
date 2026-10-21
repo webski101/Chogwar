@@ -1,11 +1,8 @@
 import type { ChogFighter } from "@/lib/chogs";
 import { accentFor, displayName, fighterId } from "@/lib/chogs";
-import { ipfsToHttp } from "@/lib/ipfs";
-import {
-  buildFromAttrs,
-  legacyTraitsFromAttrs,
-  type AttrBag,
-} from "@/lib/traits";
+import { artProxyPath, artIdFromUri } from "@/lib/ipfs";
+import { buildFromAttrs, legacyTraitsFromAttrs } from "@/lib/traits";
+import type { AttrBag } from "@/lib/traits";
 
 export type NftAttribute = {
   trait_type: string;
@@ -27,15 +24,41 @@ export function attrMap(attributes: NftAttribute[] = []): AttrBag {
   return map;
 }
 
+/** Base "1:1" or Tier Legendary/Epic — may have only 2 attributes. */
+export function isLegendaryOneOfOne(metadata: ChogMetadata): boolean {
+  const map = attrMap(metadata.attributes ?? []);
+  const base = (map.base ?? "").toLowerCase();
+  const tier = (map.tier ?? "").toLowerCase();
+  return (
+    base.includes("1:1") ||
+    exactTier(tier, "legendary") ||
+    exactTier(tier, "epic")
+  );
+}
+
+function exactTier(tier: string, want: string) {
+  return tier.trim().toLowerCase() === want;
+}
+
 /** True when metadata has real trait attributes (not empty / broken). */
 export function hasRealTraits(metadata: ChogMetadata): boolean {
   const attrs = metadata.attributes;
-  if (!attrs || attrs.length < 3) return false;
+  if (!attrs?.length) return false;
+  // Legendary / Epic 1:1s ship with Base + Tier only
+  if (isLegendaryOneOfOne(metadata)) return true;
+  if (attrs.length < 3) return false;
   const map = attrMap(attrs);
-  // Need at least a couple of the core combat-facing traits
   const keys = ["eyes", "mouth", "head", "body", "skin", "tier"];
   const hit = keys.filter((k) => Boolean(map[k])).length;
   return hit >= 2;
+}
+
+/** "CHOG #1290 — Krown" → "Krown" */
+export function oneOfOneTitleFromName(name?: string): string | undefined {
+  if (!name) return undefined;
+  const m = name.match(/[—–-]\s*(.+)$/);
+  const title = m?.[1]?.trim();
+  return title || undefined;
 }
 
 export function fighterFromMetadata(
@@ -50,15 +73,25 @@ export function fighterFromMetadata(
   const built = buildFromAttrs(attrs, tokenId);
   const metaName = metadata.name?.replace(/^CHOG\s*/i, "Chog ").trim();
   const name = displayName(tokenId);
+  const legendaryOneOfOne = isLegendaryOneOfOne(metadata);
+  const oneOfOneTitle = legendaryOneOfOne
+    ? oneOfOneTitleFromName(metadata.name)
+    : undefined;
 
-  // Art id ≠ token id — never invent /{tokenId}.webp. Require metadata.image.
-  const image = metadata.image ? ipfsToHttp(metadata.image) : undefined;
+  // Art id ≠ token id — never invent /{tokenId}.webp. Proxy via /api/art.
+  const artId = metadata.image ? artIdFromUri(metadata.image) : null;
+  const image = artId != null ? artProxyPath(artId) : undefined;
 
   return {
     id: fighterId(tokenId, source),
     tokenId,
     name,
-    metaName: metaName && metaName !== name ? metaName : undefined,
+    metaName:
+      !legendaryOneOfOne && metaName && metaName !== name
+        ? metaName
+        : undefined,
+    oneOfOneTitle,
+    legendaryOneOfOne,
     archetype: built.archetype,
     traits: legacyTraitsFromAttrs(attrs),
     stats: built.stats,

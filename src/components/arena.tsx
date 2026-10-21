@@ -90,6 +90,8 @@ function FighterPick({
   onSelect: () => void;
   practice?: boolean;
 }) {
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const imgLoaded = Boolean(chog.image && loadedSrc === chog.image);
   return (
     <button
       type="button"
@@ -101,23 +103,32 @@ function FighterPick({
     >
       <div
         className={cn(
-          "aspect-[4/5] overflow-hidden rounded-xl bg-[#211e1b] transition",
+          "relative aspect-[4/5] overflow-hidden rounded-xl bg-[#211e1b] transition",
           selected ? "outline outline-2 outline-[#e85d04] outline-offset-2" : "",
         )}
       >
+        <div
+          className={cn(
+            "absolute inset-0 animate-pulse bg-[#2a2622]",
+            imgLoaded && chog.image ? "opacity-0" : "opacity-100",
+          )}
+        />
         {chog.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            key={chog.image}
             src={chog.image}
             alt=""
-            loading="lazy"
             decoding="async"
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover"
+            onLoad={() => setLoadedSrc(chog.image ?? null)}
+            className={cn(
+              "relative h-full w-full object-cover transition-opacity duration-300",
+              imgLoaded ? "opacity-100" : "opacity-0",
+            )}
           />
         ) : (
           <div
-            className="flex h-full w-full items-end p-3"
+            className="relative flex h-full w-full items-end p-3"
             style={{
               background: `linear-gradient(165deg, ${chog.accent}, #211e1b 75%)`,
             }}
@@ -132,9 +143,13 @@ function FighterPick({
         <p className="font-heading text-sm font-semibold text-[#f3ebe2]">
           {chog.name}
         </p>
-        {chog.metaName && (
+        {chog.oneOfOneTitle ? (
+          <p className="truncate text-[11px] text-[#f3ebe2]/90">
+            {chog.oneOfOneTitle}
+          </p>
+        ) : chog.metaName ? (
           <p className="truncate text-[11px] text-[#a89f94]">{chog.metaName}</p>
-        )}
+        ) : null}
         <p className="text-xs text-[#a89f94]">
           {ARCHETYPE_LABEL[chog.archetype]} · {chog.stats.power}/
           {chog.stats.speed}/{chog.stats.chaos}/{chog.stats.grit}
@@ -142,6 +157,10 @@ function FighterPick({
         {practice ? (
           <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-[#a89f94]">
             Practice — unranked
+          </p>
+        ) : chog.legendaryOneOfOne ? (
+          <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-[#e85d04]">
+            Legendary 1/1
           </p>
         ) : (
           <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-[#e85d04]">
@@ -378,9 +397,9 @@ export function Arena() {
         if (data.secondsUntilNextRival != null) {
           setCountdown(Number(data.secondsUntilNextRival));
         }
+        // Preload rival art as soon as /api/rival returns (same-origin proxy)
         if (f.image) {
           const img = new Image();
-          img.referrerPolicy = "no-referrer";
           img.src = f.image;
         }
       })
@@ -646,13 +665,13 @@ export function Arena() {
           </p>
           {isSample && (
             <p className="mt-2 text-sm text-[#e85d04]">
-              Sample holder is view-only — fights are not ranked.
+              Sample holder — view-only, not ranked. Connect your own wallet
+              with a Chog to rank.
             </p>
           )}
-          {isPractice && player && (
+          {isPractice && player && !isSample && (
             <p className="mt-2 text-sm text-[#a89f94]">
-              Practice — unranked. Connect a wallet with a Chog (or use Sample
-              holder) to fight ranked.
+              Practice — unranked. Connect a wallet with a Chog to fight ranked.
             </p>
           )}
           {ownedError && (
@@ -721,9 +740,18 @@ export function Arena() {
                   <p className="font-heading text-xl font-semibold">
                     {player.name}
                   </p>
-                  {player.metaName && (
+                  {player.oneOfOneTitle ? (
+                    <p className="text-xs text-[#f3ebe2]/90">
+                      {player.oneOfOneTitle}
+                    </p>
+                  ) : player.metaName ? (
                     <p className="text-xs text-[#a89f94]">{player.metaName}</p>
-                  )}
+                  ) : null}
+                  {player.legendaryOneOfOne ? (
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#e85d04]">
+                      Legendary 1/1
+                    </p>
+                  ) : null}
                   <p className="text-xs text-[#a89f94]">
                     {ARCHETYPE_LABEL[player.archetype]} · max {playerMax} HP
                   </p>
@@ -831,15 +859,24 @@ export function Arena() {
                     ))}
                   </ul>
                 </div>
-                {!canRank ? (
+                {isSample ? (
                   <p className="text-sm text-[#a89f94]">
-                    Practice — unranked. Connect a wallet with a Chog (or use
-                    Sample holder) to fight ranked.
+                    Sample holder — view-only, not ranked. Connect your own
+                    wallet with a Chog to rank.
                   </p>
-                ) : (
+                ) : isPractice ? (
+                  <p className="text-sm text-[#a89f94]">
+                    Practice — unranked. Connect a wallet with a Chog to fight
+                    ranked.
+                  </p>
+                ) : canRank ? (
                   <p className="text-sm text-[#a89f94]">
                     One free ranked duel per Chog each day. Hold 1,000 $CHOG → +1
                     rematch/day (no transaction).
+                  </p>
+                ) : (
+                  <p className="text-sm text-[#a89f94]">
+                    Connect a wallet that holds a Chog to rank this result.
                   </p>
                 )}
                 <Button
@@ -899,9 +936,18 @@ export function Arena() {
                   <p className="font-heading text-xl font-semibold">
                     {rival.name}
                   </p>
-                  {rival.metaName && (
+                  {rival.oneOfOneTitle ? (
+                    <p className="text-xs text-[#f3ebe2]/90">
+                      {rival.oneOfOneTitle}
+                    </p>
+                  ) : rival.metaName ? (
                     <p className="text-xs text-[#a89f94]">{rival.metaName}</p>
-                  )}
+                  ) : null}
+                  {rival.legendaryOneOfOne ? (
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-[#e85d04]">
+                      Legendary 1/1
+                    </p>
+                  ) : null}
                   <p className="text-xs text-[#a89f94]">
                     {ARCHETYPE_LABEL[rival.archetype]} · max {rivalMax} HP
                   </p>
@@ -1007,8 +1053,7 @@ export function Arena() {
         {leaderOffline ? (
           <div className="rounded-md border border-white/10 bg-[#211e1b] px-4 py-8 text-center text-sm text-[#a89f94]">
             <p>
-              Ranked board: connect a wallet that holds a Chog — results
-              verified on the server.
+              Ranked board opens soon — results will be verified on the server.
             </p>
             {process.env.NODE_ENV === "development" ? (
               <p className="mt-2 text-xs text-[#a89f94]/80">
