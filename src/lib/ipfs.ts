@@ -1,9 +1,17 @@
 /** IPFS helpers: Pinata + dweb.link (no ipfs.io — SW gateway only). */
 
-const GATEWAYS = [
+/** JSON metadata: 4everland first (Pinata often 429s under burst). */
+const JSON_GATEWAYS = [
   (cidPath: string) => `https://4everland.io/ipfs/${cidPath}`,
   (cidPath: string) => `https://gateway.pinata.cloud/ipfs/${cidPath}`,
   (cidPath: string) => `https://dweb.link/ipfs/${cidPath}`,
+] as const;
+
+/** Browser image URLs: Pinata serves collection webp reliably. */
+const IMAGE_GATEWAYS = [
+  (cidPath: string) => `https://gateway.pinata.cloud/ipfs/${cidPath}`,
+  (cidPath: string) => `https://dweb.link/ipfs/${cidPath}`,
+  (cidPath: string) => `https://4everland.io/ipfs/${cidPath}`,
 ] as const;
 
 /** Collection metadata CID (files 1.json … 1969.json). */
@@ -24,21 +32,27 @@ export function metadataFileFromUri(uri: string): string | null {
   return /^\d+\.json$/i.test(base) ? base.toLowerCase() : null;
 }
 
-export function ipfsHttpUrls(uri: string): string[] {
+export function ipfsHttpUrls(
+  uri: string,
+  kind: "json" | "image" = "json",
+): string[] {
+  const gateways = kind === "image" ? IMAGE_GATEWAYS : JSON_GATEWAYS;
   if (!uri) return [];
   if (uri.startsWith("http://") || uri.startsWith("https://")) {
     const path = ipfsCidPath(uri);
     if (path !== uri) {
-      return [uri, ...GATEWAYS.map((g) => g(path)).filter((u) => u !== uri)];
+      return [uri, ...gateways.map((g) => g(path)).filter((u) => u !== uri)];
     }
     return [uri];
   }
   const path = ipfsCidPath(uri);
-  return GATEWAYS.map((g) => g(path));
+  return gateways.map((g) => g(path));
 }
 
+/** Prefer Pinata for art (webp); JSON fetch uses JSON_GATEWAYS. */
 export function ipfsToHttp(uri: string): string {
-  return ipfsHttpUrls(uri)[0] ?? uri;
+  const looksLikeImage = /\.(webp|png|jpe?g|gif)(\?|$)/i.test(uri);
+  return ipfsHttpUrls(uri, looksLikeImage ? "image" : "json")[0] ?? uri;
 }
 
 async function sleep(ms: number) {
