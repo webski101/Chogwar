@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { verifyMessage } from "viem";
 import { todayKey } from "@/lib/chogs";
 import {
-  loadDailyRival,
+  isValidRivalTokenId,
   loadFighterByTokenId,
   ownerOfToken,
+  readTotalSupply,
 } from "@/lib/chog-loader";
 import {
   consumeNonce,
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   try {
     if (storageMode() === "offline") {
       return NextResponse.json(
-        { error: "Leaderboard offline", ranked: false, offline: true },
+        { error: "Ranked board unavailable", ranked: false, offline: true },
         { status: 503 },
       );
     }
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       address?: string;
       tokenId?: number;
+      rivalTokenId?: number;
       name?: string;
       message?: string;
       signature?: string;
@@ -38,7 +40,8 @@ export async function POST(request: Request) {
 
     const address = body.address?.toLowerCase();
     const tokenId = Number(body.tokenId);
-    const dayKey = todayKey(); // always server day — ignore client dayKey
+    const rivalTokenId = Number(body.rivalTokenId);
+    const dayKey = todayKey();
     const moves = Array.isArray(body.moves)
       ? body.moves.map(String).filter(Boolean)
       : [];
@@ -49,6 +52,9 @@ export async function POST(request: Request) {
     }
     if (!Number.isInteger(tokenId) || tokenId < 1) {
       return NextResponse.json({ error: "tokenId required" }, { status: 400 });
+    }
+    if (!Number.isInteger(rivalTokenId) || rivalTokenId < 1) {
+      return NextResponse.json({ error: "rivalTokenId required" }, { status: 400 });
     }
     if (!moves.length) {
       return NextResponse.json({ error: "moves required" }, { status: 400 });
@@ -72,9 +78,17 @@ export async function POST(request: Request) {
     }
 
     const movesJoined = moves.join(",");
-    const expected = `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: ${tokenId}\nNonce: ${nonce}\nMoves: ${movesJoined}`;
+    const expected = `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: ${tokenId}\nRival: ${rivalTokenId}\nNonce: ${nonce}\nMoves: ${movesJoined}`;
     if (body.message !== expected) {
       return NextResponse.json({ error: "Bad message payload" }, { status: 400 });
+    }
+
+    const supply = await readTotalSupply();
+    if (!isValidRivalTokenId(tokenId, dayKey, rivalTokenId, supply)) {
+      return NextResponse.json(
+        { error: "Rival does not match today's deterministic pick" },
+        { status: 400 },
+      );
     }
 
     const nonceOk = await consumeNonce(address, dayKey, nonce);
@@ -103,7 +117,7 @@ export async function POST(request: Request) {
     }
 
     const player = await loadFighterByTokenId(tokenId, "onchain");
-    const { fighter: rival } = await loadDailyRival(tokenId, dayKey);
+    const rival = await loadFighterByTokenId(rivalTokenId, "onchain");
     const result = replayRankedBattle(player, rival, dayKey, moves);
     const won = result.winnerId === player.id;
 
@@ -121,9 +135,13 @@ export async function POST(request: Request) {
       won,
       entry,
       rounds: result.rounds,
+      rivalTokenId,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Submit failed";
+    const message =
+      error instanceof Error && error.message.length < 120
+        ? error.message
+        : "Submit failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

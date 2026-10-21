@@ -26,7 +26,12 @@ export async function GET(request: Request) {
       secondsUntilNextRival: secondsUntilNextUtcDay(),
       storage: "offline",
       offline: true,
-      message: "Leaderboard offline — add Upstash Redis / Vercel KV env vars",
+      message:
+        "Ranked board: connect a wallet that holds a Chog — results verified on the server",
+      hint:
+        process.env.NODE_ENV === "development"
+          ? "Dev: add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (or KV_*)"
+          : undefined,
     });
   }
 

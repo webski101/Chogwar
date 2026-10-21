@@ -30,6 +30,6 @@ export async function GET(request: Request) {
   return NextResponse.json({
     dayKey,
     nonce,
-    messageTemplate: `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: <tokenId>\nNonce: ${nonce}\nMoves: <moveIds>`,
+    messageTemplate: `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: <tokenId>\nRival: <rivalTokenId>\nNonce: ${nonce}\nMoves: <moveIds>`,
   });
 }

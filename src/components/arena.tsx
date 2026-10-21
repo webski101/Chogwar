@@ -165,6 +165,7 @@ async function signRankedMessage(
   address: string,
   dayKey: string,
   tokenId: number,
+  rivalTokenId: number,
   nonce: string,
   moveIds: string[],
 ): Promise<{ message: string; signature: string } | null> {
@@ -176,7 +177,7 @@ async function signRankedMessage(
     }
   ).ethereum;
   if (!eth) return null;
-  const message = `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: ${tokenId}\nNonce: ${nonce}\nMoves: ${moveIds.join(",")}`;
+  const message = `Chog Rivalry ranked result\nDay: ${dayKey}\nToken: ${tokenId}\nRival: ${rivalTokenId}\nNonce: ${nonce}\nMoves: ${moveIds.join(",")}`;
   const signature = (await eth.request({
     method: "personal_sign",
     params: [message, address],
@@ -525,6 +526,7 @@ export function Arena() {
               address,
               nonceData.dayKey || day,
               player.tokenId,
+              rival.tokenId,
               nonceData.nonce as string,
               moveIds,
             );
@@ -535,6 +537,7 @@ export function Arena() {
                 body: JSON.stringify({
                   address,
                   tokenId: player.tokenId,
+                  rivalTokenId: rival.tokenId,
                   name: player.name,
                   message: signed.message,
                   signature: signed.signature,
@@ -1002,10 +1005,18 @@ export function Arena() {
           </p>
         </div>
         {leaderOffline ? (
-          <p className="rounded-md border border-white/10 bg-[#211e1b] px-4 py-8 text-center text-sm text-[#a89f94]">
-            Leaderboard offline — add Upstash Redis (or Vercel KV) env vars on
-            the project to enable ranked storage.
-          </p>
+          <div className="rounded-md border border-white/10 bg-[#211e1b] px-4 py-8 text-center text-sm text-[#a89f94]">
+            <p>
+              Ranked board: connect a wallet that holds a Chog — results
+              verified on the server.
+            </p>
+            {process.env.NODE_ENV === "development" ? (
+              <p className="mt-2 text-xs text-[#a89f94]/80">
+                Dev: add UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (or
+                KV_*) to enable durable storage.
+              </p>
+            ) : null}
+          </div>
         ) : null}
         <div className="divide-y divide-white/10 border-y border-white/10">
           {!leaderOffline && leaderTop.length === 0 ? (
