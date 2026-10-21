@@ -1,6 +1,8 @@
 /**
  * Capture README screenshots from production at 1440×900 (page only).
- *   node scripts/capture-screenshots.mjs
+ * Mid-fight / result crop to #arena so pick-row "Why these stats" is gone.
+ *
+ *   SHOT_URL=https://chogwarr.vercel.app node scripts/capture-screenshots.mjs
  */
 import { chromium } from "playwright";
 import path from "node:path";
@@ -10,6 +12,34 @@ const OUT = path.join(process.cwd(), "public/screenshots");
 const BASE = process.env.SHOT_URL || "https://chogwarr.vercel.app";
 
 fs.mkdirSync(OUT, { recursive: true });
+
+async function waitImages(page, min = 2) {
+  for (let i = 0; i < 45; i++) {
+    const ok = await page.evaluate((n) => {
+      const imgs = [...document.querySelectorAll("#arena img, #pick img")];
+      return imgs.filter((img) => img.complete && img.naturalWidth > 40).length >= n;
+    }, min);
+    if (ok) return;
+    await page.waitForTimeout(800);
+  }
+}
+
+async function shotArena(page, file) {
+  await page.locator("#arena").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  // Full viewport after scrolling arena to top — avoids pick-row fragment
+  await page.evaluate(() => {
+    const el = document.querySelector("#arena");
+    if (el) el.scrollIntoView({ block: "start" });
+    window.scrollBy(0, -8);
+  });
+  await page.waitForTimeout(200);
+  await page.screenshot({
+    path: path.join(OUT, file),
+    clip: { x: 0, y: 0, width: 1440, height: 900 },
+  });
+  console.log(file);
+}
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
@@ -24,32 +54,24 @@ async function main() {
   if (await sample.count()) await sample.click();
 
   await page.waitForSelector("text=Why these stats", { timeout: 120_000 });
-  for (let i = 0; i < 40; i++) {
-    const ok = await page.evaluate(() => {
-      const imgs = [...document.querySelectorAll("img")];
-      return imgs.filter((img) => img.complete && img.naturalWidth > 40).length;
-    });
-    if (ok >= 3) break;
-    await page.waitForTimeout(1000);
-  }
+  await waitImages(page, 3);
 
   await page.locator("#pick").scrollIntoViewIfNeeded();
   await page.waitForTimeout(600);
-  // Full viewport shot of fighter section
   await page.screenshot({
     path: path.join(OUT, "fighter-cards.png"),
     clip: { x: 0, y: 0, width: 1440, height: 900 },
   });
   console.log("fighter-cards.png");
 
-  await page.locator("#arena").scrollIntoViewIfNeeded();
   const enter = page.getByRole("button", { name: /enter the ring/i });
   await enter.waitFor({ timeout: 60_000 });
   await enter.click();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(1200);
+  await waitImages(page, 2);
 
   let wroteCrit = false;
-  for (let round = 0; round < 12; round++) {
+  for (let round = 0; round < 16; round++) {
     if (await page.getByText(/take the ring|holds the ring/i).count()) break;
     const moves = page.locator("#arena button").filter({ hasText: /→/ });
     const n = await moves.count();
@@ -58,45 +80,29 @@ async function main() {
       continue;
     }
     await moves.nth(round % n).click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(900);
     if ((await page.getByText(/CRIT/i).count()) && !wroteCrit) {
-      await page.locator("#arena").scrollIntoViewIfNeeded();
-      await page.screenshot({
-        path: path.join(OUT, "mid-fight-crit.png"),
-        clip: { x: 0, y: 0, width: 1440, height: 900 },
-      });
+      await shotArena(page, "mid-fight-crit.png");
       wroteCrit = true;
-      console.log("mid-fight-crit.png");
     }
   }
-  if (!wroteCrit) {
-    await page.screenshot({
-      path: path.join(OUT, "mid-fight-crit.png"),
-      clip: { x: 0, y: 0, width: 1440, height: 900 },
-    });
-    console.log("mid-fight-crit.png (fallback)");
-  }
+  if (!wroteCrit) await shotArena(page, "mid-fight-crit.png");
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 16; i++) {
     if (await page.getByText(/take the ring|holds the ring/i).count()) break;
     const moves = page.locator("#arena button").filter({ hasText: /→/ });
     const n = await moves.count();
     if (n > 0) {
       await moves.nth(i % n).click();
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(800);
     } else break;
   }
 
   await page.getByText(/take the ring|holds the ring/i).waitFor({
-    timeout: 30_000,
+    timeout: 45_000,
   });
-  await page.locator("#arena").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(400);
-  await page.screenshot({
-    path: path.join(OUT, "result-card.png"),
-    clip: { x: 0, y: 0, width: 1440, height: 900 },
-  });
-  console.log("result-card.png");
+  await waitImages(page, 2);
+  await shotArena(page, "result-card.png");
 
   await browser.close();
 }
