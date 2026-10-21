@@ -1,16 +1,26 @@
-/** IPFS helpers: multi-gateway fetch with retries. */
+/** IPFS helpers: Pinata + dweb.link (no ipfs.io — SW gateway only). */
 
 const GATEWAYS = [
   (cidPath: string) => `https://gateway.pinata.cloud/ipfs/${cidPath}`,
-  (cidPath: string) => `https://ipfs.io/ipfs/${cidPath}`,
   (cidPath: string) => `https://dweb.link/ipfs/${cidPath}`,
 ] as const;
+
+/** Collection metadata CID (files 1.json … 1969.json). */
+export const CHOG_METADATA_CID =
+  "bafybeid4ybujnscdipkno7ps5utqelp5ry5ryreqhay3zhgk3a6x4jruqu";
 
 export function ipfsCidPath(uri: string): string {
   if (!uri) return uri;
   if (uri.startsWith("ipfs://")) return uri.slice("ipfs://".length);
   const m = uri.match(/\/ipfs\/(.+)$/);
   return m ? m[1] : uri;
+}
+
+/** Basename like `1462.json` from a tokenURI. */
+export function metadataFileFromUri(uri: string): string | null {
+  const path = ipfsCidPath(uri);
+  const base = path.split("/").pop() ?? "";
+  return /^\d+\.json$/i.test(base) ? base.toLowerCase() : null;
 }
 
 export function ipfsHttpUrls(uri: string): string[] {
@@ -36,7 +46,7 @@ async function sleep(ms: number) {
 
 /**
  * Fetch JSON from IPFS with 2 retries and gateway failover.
- * Throws if every attempt fails.
+ * Successful responses use a long Next fetch revalidate window.
  */
 export async function fetchIpfsJson<T>(uri: string): Promise<T> {
   const urls = ipfsHttpUrls(uri);
@@ -45,9 +55,11 @@ export async function fetchIpfsJson<T>(uri: string): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt++) {
     for (const url of urls) {
       try {
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch(url, {
+          next: { revalidate: 2_592_000 },
+        });
         if (!res.ok) {
-          lastError = new Error(`HTTP ${res.status} from ${url}`);
+          lastError = new Error(`HTTP ${res.status}`);
           continue;
         }
         return (await res.json()) as T;
@@ -58,7 +70,6 @@ export async function fetchIpfsJson<T>(uri: string): Promise<T> {
     if (attempt === 0) await sleep(350 * (attempt + 1));
   }
 
-  const msg =
-    lastError instanceof Error ? lastError.message : "IPFS fetch failed";
-  throw new Error(msg);
+  void lastError;
+  throw new Error("Metadata fetch failed");
 }

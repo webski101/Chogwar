@@ -51,6 +51,8 @@ async function kvGet(key: string): Promise<string | null> {
 
 async function kvSet(key: string, value: string, exSeconds?: number) {
   if (!kvConfigured()) return;
+  // Upstash REST stores the request body verbatim — pass the string as-is
+  // (do not JSON.stringify an already-stringified value).
   const url = exSeconds
     ? `${kvUrl()}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}?EX=${exSeconds}`
     : `${kvUrl()}/set/${encodeURIComponent(key)}`;
@@ -68,7 +70,7 @@ async function kvSet(key: string, value: string, exSeconds?: number) {
       Authorization: `Bearer ${kvToken()}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(value),
+    body: value,
     cache: "no-store",
   });
 }
@@ -117,15 +119,31 @@ export async function consumeNonce(
   return true;
 }
 
+function parseBoard(raw: string, dayKey: string): DayBoard {
+  try {
+    let parsed: unknown = JSON.parse(raw);
+    // Guard: if a previous bug double-stringified, parse again.
+    if (typeof parsed === "string") {
+      parsed = JSON.parse(parsed);
+    }
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "byToken" in (parsed as DayBoard)
+    ) {
+      return parsed as DayBoard;
+    }
+  } catch {
+    /* fall through */
+  }
+  return { dayKey, byToken: {} };
+}
+
 export async function loadDayBoard(dayKey: string): Promise<DayBoard | null> {
   if (!kvConfigured()) return null;
   const raw = await kvGet(dayKeyName(dayKey));
   if (!raw) return { dayKey, byToken: {} };
-  try {
-    return JSON.parse(raw) as DayBoard;
-  } catch {
-    return { dayKey, byToken: {} };
-  }
+  return parseBoard(raw, dayKey);
 }
 
 async function saveDayBoard(board: DayBoard) {

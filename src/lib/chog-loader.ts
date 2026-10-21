@@ -10,6 +10,7 @@ import {
   type ChogMetadata,
 } from "@/lib/onchain-chog";
 import { fetchIpfsJson } from "@/lib/ipfs";
+import { loadBundledMetadata } from "@/lib/bundled-metadata";
 import type { ChogFighter } from "@/lib/chogs";
 import { pickRivalTokenId } from "@/lib/chogs";
 
@@ -22,11 +23,27 @@ const abi = parseAbi([
   "function totalSupply() view returns (uint256)",
 ]);
 
+/** Max fall-through steps when daily rival metadata fails. */
+export const RIVAL_FALLTHROUGH_MAX = 24;
+
 export class MetadataLoadError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "MetadataLoadError";
   }
+}
+
+function shortError(err: unknown, fallback: string): string {
+  if (err instanceof MetadataLoadError) return err.message;
+  if (err instanceof Error) {
+    const m = err.message;
+    // Strip verbose viem / RPC dumps
+    if (m.length > 120 || /Details:|Version:|Request Arguments/i.test(m)) {
+      return fallback;
+    }
+    return m;
+  }
+  return fallback;
 }
 
 export async function readTotalSupply(): Promise<number> {
@@ -60,15 +77,19 @@ async function readTokenUri(tokenId: number): Promise<string> {
     }
   }
   throw new MetadataLoadError(
-    `tokenURI failed for #${tokenId}: ${
-      last instanceof Error ? last.message : "rpc error"
-    }`,
+    shortError(last, `Could not read tokenURI for #${tokenId}`),
   );
+}
+
+async function resolveMetadata(tokenURI: string): Promise<ChogMetadata> {
+  const bundled = await loadBundledMetadata(tokenURI);
+  if (bundled && hasRealTraits(bundled)) return bundled;
+  return fetchIpfsJson<ChogMetadata>(tokenURI);
 }
 
 /**
  * Load a real Genesis fighter. Never returns a trait-less success —
- * throws MetadataLoadError after retries / gateway failover.
+ * throws MetadataLoadError after bundled + IPFS attempts.
  */
 export async function loadFighterByTokenId(
   tokenId: number,
@@ -78,16 +99,56 @@ export async function loadFighterByTokenId(
     throw new MetadataLoadError("Invalid tokenId");
   }
 
-  const uri = await readTokenUri(tokenId);
-  const metadata = await fetchIpfsJson<ChogMetadata>(uri);
+  try {
+    const uri = await readTokenUri(tokenId);
+    const metadata = await resolveMetadata(uri);
 
-  if (!hasRealTraits(metadata)) {
-    throw new MetadataLoadError(
-      `Metadata for #${tokenId} has no usable attributes`,
-    );
+    if (!hasRealTraits(metadata)) {
+      throw new MetadataLoadError(`No usable traits for #${tokenId}`);
+    }
+
+    return fighterFromMetadata(tokenId, metadata, source);
+  } catch (err) {
+    if (err instanceof MetadataLoadError) throw err;
+    throw new MetadataLoadError(shortError(err, `Metadata unavailable for #${tokenId}`));
   }
+}
 
-  return fighterFromMetadata(tokenId, metadata, source);
+/**
+ * Ordered daily-rival candidates: deterministic pick, then +1 wrap,
+ * skipping the player, up to RIVAL_FALLTHROUGH_MAX ids.
+ */
+export function rivalCandidateIds(
+  playerTokenId: number,
+  dayKey: string,
+  totalSupply: number,
+): number[] {
+  const supply = Math.max(1, totalSupply);
+  const start = pickRivalTokenId(playerTokenId, dayKey, supply);
+  const out: number[] = [];
+  let candidate = start;
+  for (let i = 0; i < Math.min(supply, RIVAL_FALLTHROUGH_MAX); i++) {
+    if (candidate !== playerTokenId && !out.includes(candidate)) {
+      out.push(candidate);
+    }
+    candidate = candidate >= supply ? 1 : candidate + 1;
+    if (candidate === playerTokenId) {
+      candidate = candidate >= supply ? 1 : candidate + 1;
+    }
+  }
+  return out;
+}
+
+/** True if rivalTokenId is the deterministic pick or a documented fall-through. */
+export function isValidRivalTokenId(
+  playerTokenId: number,
+  dayKey: string,
+  rivalTokenId: number,
+  totalSupply: number,
+): boolean {
+  return rivalCandidateIds(playerTokenId, dayKey, totalSupply).includes(
+    rivalTokenId,
+  );
 }
 
 /** Deterministic rival: skip tokenIds whose metadata fails. */
@@ -97,26 +158,18 @@ export async function loadDailyRival(
   totalSupply?: number,
 ): Promise<{ rivalTokenId: number; fighter: ChogFighter; totalSupply: number }> {
   const supply = totalSupply ?? (await readTotalSupply());
-  const tried = new Set<number>();
-  let candidate = pickRivalTokenId(playerTokenId, dayKey, supply);
+  const candidates = rivalCandidateIds(playerTokenId, dayKey, supply);
 
-  for (let i = 0; i < Math.min(supply, 24); i++) {
-    if (!tried.has(candidate) && candidate !== playerTokenId) {
-      tried.add(candidate);
-      try {
-        const fighter = await loadFighterByTokenId(candidate, "onchain");
-        return { rivalTokenId: candidate, fighter, totalSupply: supply };
-      } catch {
-        /* try next */
-      }
-    }
-    candidate = candidate >= supply ? 1 : candidate + 1;
-    if (candidate === playerTokenId) {
-      candidate = candidate >= supply ? 1 : candidate + 1;
+  for (const candidate of candidates) {
+    try {
+      const fighter = await loadFighterByTokenId(candidate, "onchain");
+      return { rivalTokenId: candidate, fighter, totalSupply: supply };
+    } catch {
+      /* try next fall-through */
     }
   }
 
-  throw new MetadataLoadError("Could not load any rival metadata");
+  throw new MetadataLoadError("Could not load rival metadata");
 }
 
 export async function ownerOfToken(tokenId: number): Promise<string | null> {
