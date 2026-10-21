@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { ChogFighter } from "@/lib/chogs";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +19,8 @@ export function ChogPortrait({
   bouncing,
   hit,
 }: Props) {
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const loaded = Boolean(chog.image && loadedSrc === chog.image);
   const dim =
     size === "sm"
       ? "h-14 w-14"
@@ -28,7 +33,7 @@ export function ChogPortrait({
   return (
     <div
       className={cn(
-        "relative shrink-0",
+        "relative shrink-0 overflow-hidden rounded-xl",
         dim,
         bouncing && "animate-chog-bounce",
         hit && "animate-chog-hit",
@@ -36,26 +41,38 @@ export function ChogPortrait({
       )}
       aria-hidden
     >
+      {/* Skeleton until onLoad — never an empty box */}
+      <div
+        className={cn(
+          "absolute inset-0 animate-pulse bg-[#2a2622]",
+          loaded && chog.image ? "opacity-0" : "opacity-100",
+        )}
+        style={
+          !chog.image
+            ? {
+                background: `linear-gradient(160deg, ${chog.accent} 0%, #211e1b 70%)`,
+                animation: "none",
+              }
+            : undefined
+        }
+      />
       {chog.image ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          key={chog.image}
           src={chog.image}
           alt=""
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          className="h-full w-full rounded-xl object-cover shadow-[0_20px_40px_rgba(0,0,0,0.45)]"
+          decoding="async"
+          onLoad={() => setLoadedSrc(chog.image ?? null)}
+          className={cn(
+            "relative h-full w-full object-cover shadow-[0_20px_40px_rgba(0,0,0,0.45)] transition-opacity duration-300",
+            loaded ? "opacity-100" : "opacity-0",
+          )}
         />
       ) : (
-        <div
-          className="flex h-full w-full items-end justify-center rounded-xl"
-          style={{
-            background: `linear-gradient(160deg, ${chog.accent} 0%, #211e1b 70%)`,
-          }}
-        >
-          <span className="pb-4 font-heading text-3xl font-bold text-[#f3ebe2]/90">
-            #{chog.tokenId}
-          </span>
-        </div>
+        <span className="relative flex h-full w-full items-end justify-center pb-4 font-heading text-3xl font-bold text-[#f3ebe2]/90">
+          #{chog.tokenId}
+        </span>
       )}
     </div>
   );

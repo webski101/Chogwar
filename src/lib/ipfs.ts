@@ -32,6 +32,20 @@ export function metadataFileFromUri(uri: string): string | null {
   return /^\d+\.json$/i.test(base) ? base.toLowerCase() : null;
 }
 
+/** Numeric art id from metadata image / tokenURI path (…/1290.webp). */
+export function artIdFromUri(uri: string): number | null {
+  const path = ipfsCidPath(uri);
+  const m = path.match(/(?:^|\/)(\d+)\.(?:webp|png|jpe?g|gif|json)$/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isInteger(n) && n >= 1 ? n : null;
+}
+
+/** Same-origin art proxy — long-cache Pinata webp. */
+export function artProxyPath(artId: number | string): string {
+  return `/api/art/${artId}`;
+}
+
 export function ipfsHttpUrls(
   uri: string,
   kind: "json" | "image" = "json",
