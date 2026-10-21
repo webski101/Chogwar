@@ -110,10 +110,10 @@ Monad RPC (chain 143)
   → Client game (Arena): pick fighter → daily rival → turn-based duel → optional ranked submit
 ```
 
-- Metadata: `tokenURI` → IPFS (Pinata → ipfs.io → dweb.link), retries, **502 + no-store** on failure (never trait-less success). Art id ≠ token id — image always from metadata.
+- Metadata: on-chain `tokenURI` → bundled `data/metadata/<id>.json` first, then IPFS (Pinata → dweb.link) with long revalidate. **502 + no-store** on failure (never trait-less success). Art id ≠ token id — image always from metadata.
 - Daily rival: hash → tokenId ≠ player; on metadata failure, advance to next id.
 - Ranked: server issues nonce, client signs day + token + nonce + move ids; server reloads fighters, replays `createBattle`/`playTurn`, derives winner. Client `won` is ignored.
-- Leaderboard storage: **Upstash Redis / Vercel KV required**. Without env vars the UI shows **Leaderboard offline**.
+- Leaderboard storage: **Upstash Redis / Vercel KV required** for durable ranked results. Without env vars the UI shows judge-friendly ranked-board copy (env hint only in development).
 
 ### Env (required for ranked leaderboard)
 

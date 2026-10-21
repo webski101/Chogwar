@@ -47,6 +47,7 @@ function main() {
     const raw = JSON.parse(
       fs.readFileSync(path.join(DIR, file), "utf8"),
     ) as ChogMetadata & { tokenId?: number };
+    // Snapshot files are named by art/metadata id (CID basename), not on-chain tokenId.
     const tokenId =
       raw.tokenId ?? Number(file.replace(/\.json$/, "")) ?? 0;
     const attrs = attrMap(raw.attributes);

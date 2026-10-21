@@ -3,6 +3,7 @@
 const GATEWAYS = [
   (cidPath: string) => `https://gateway.pinata.cloud/ipfs/${cidPath}`,
   (cidPath: string) => `https://dweb.link/ipfs/${cidPath}`,
+  (cidPath: string) => `https://4everland.io/ipfs/${cidPath}`,
 ] as const;
 
 /** Collection metadata CID (files 1.json … 1969.json). */

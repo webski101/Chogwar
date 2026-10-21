@@ -11,6 +11,7 @@ const CID = "bafybeid4ybujnscdipkno7ps5utqelp5ry5ryreqhay3zhgk3a6x4jruqu";
 const TOTAL = 1969;
 const OUT = path.join(process.cwd(), "data/metadata");
 const GATEWAYS = [
+  (id: number) => `https://4everland.io/ipfs/${CID}/${id}.json`,
   (id: number) => `https://gateway.pinata.cloud/ipfs/${CID}/${id}.json`,
   (id: number) => `https://dweb.link/ipfs/${CID}/${id}.json`,
 ];

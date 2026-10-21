@@ -40,6 +40,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# sampled on-chain metadata cache
-/data/metadata/
 .vercel-create-ready.json
